@@ -164,7 +164,7 @@ export function SchedulePage() {
                   if (!day) return <div key={`e-${wi}-${di}`} className="calendar-cell empty" />;
                   const dayDate = new Date(`${day}T12:00:00`);
                   const dayOfWeek = dayDate.getDay();
-                  const slotTypes: ShiftType[] = dayOfWeek === 0 ? [] : dayOfWeek === 6 ? ["FULL_DAY"] : ["MORNING", "AFTERNOON", "FULL_DAY"];
+                  const slotTypes: ShiftType[] = dayOfWeek === 0 ? [] : dayOfWeek === 6 ? ["FULL_DAY"] : ["MORNING", "AFTERNOON"];
                   return (
                     <div key={day} className="calendar-cell">
                       <div className="calendar-cell-head">
@@ -173,7 +173,9 @@ export function SchedulePage() {
                       <div className="calendar-cell-body slot-stack">
                         {slotTypes.length === 0 ? <span className="mini-muted">{t.closed}</span> : null}
                         {slotTypes.map((shiftType) => {
-                          const shifts = shiftsByDaySlot.get(`${day}-${shiftType}`) ?? [];
+                          const own = shiftsByDaySlot.get(`${day}-${shiftType}`) ?? [];
+                          const fullDay = shiftType !== "FULL_DAY" ? (shiftsByDaySlot.get(`${day}-FULL_DAY`) ?? []) : [];
+                          const shifts = [...own, ...fullDay];
                           return (
                             <div
                               key={shiftType}
