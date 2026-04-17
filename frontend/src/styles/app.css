@@ -666,3 +666,88 @@ input {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── Piano mensile ─────────────────────────────────────────── */
+.piano-table-wrapper {
+  overflow-x: auto;
+  max-height: 72vh;
+  overflow-y: auto;
+}
+.piano-table {
+  border-collapse: collapse;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+.piano-table th,
+.piano-table td {
+  border: 1px solid #d8e6d8;
+  padding: 2px 5px;
+  text-align: center;
+  vertical-align: middle;
+}
+.piano-th-fixed,
+.piano-td-fixed {
+  position: sticky;
+  background: #f8faf8;
+  z-index: 2;
+  text-align: left;
+}
+.piano-th-kw, .piano-td-kw { left: 0; min-width: 2.2rem; }
+.piano-th-date, .piano-td-date { left: 2.2rem; min-width: 3.4rem; }
+.piano-th-day, .piano-td-weekday { left: 5.6rem; min-width: 2rem; }
+thead .piano-th-fixed { z-index: 3; }
+.piano-td-kw { font-weight: 600; color: #496053; }
+.piano-td-weekday { color: #6f816f; }
+.piano-th-emp { font-weight: 600; min-width: 2.4rem; font-size: 0.72rem; }
+.piano-th-emp.piano-role-pharmacist { background: #e0ede0; color: #173f2f; }
+.piano-th-emp.piano-role-pha { background: #eaf4ea; color: #2a5a3a; }
+.piano-th-emp.piano-role-apprentice_pha,
+.piano-th-emp.piano-role-driver,
+.piano-th-emp.piano-role-auxiliary { background: #f4f8f4; color: #496053; }
+.piano-th-summary,
+.piano-td-summary { background: #f0f8f0; font-weight: 600; min-width: 2rem; font-size: 0.72rem; }
+.piano-cell { min-width: 2.4rem; height: 1.5rem; font-size: 0.7rem; font-weight: 600; }
+.piano-cell-present { background: #c8e8c8; color: #173f2f; }
+.piano-cell-absence-VACATION { background: #b8d4f0; color: #1a3a6a; }
+.piano-cell-absence-SICK { background: #f0b8b8; color: #6a1a1a; }
+.piano-cell-absence-SCHOOL { background: #f8ebb8; color: #5a4a10; }
+.piano-cell-absence-TRAINING { background: #f0d8b8; color: #6a3a10; }
+.piano-cell-absence-UNAVAILABLE { background: #e0d0e8; color: #3a2050; }
+.piano-cell-absence-HR_MEETING { background: #e8e8e8; color: #404040; }
+.piano-cell-expected { background: transparent; color: #b0c8b0; font-weight: 400; }
+.piano-cell-rotating { background: #e8d8f4; color: #4a2080; }
+.piano-cell-off { background: #f4f4f4; }
+.piano-cell-sunday, .piano-row-sunday td { background: #f0f0f0; color: #c0c0c0; }
+.piano-coverage-ok { color: #2d6a2d; }
+.piano-coverage-warn { background: #fde8a8; color: #7a4a00; font-weight: 700; }
+.piano-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid #e0e8e0;
+  font-size: 0.76rem;
+  color: #496053;
+}
+.piano-legend-item { display: flex; align-items: center; gap: 0.3rem; }
+.piano-legend-present::before,
+.piano-legend-vacation::before,
+.piano-legend-sick::before,
+.piano-legend-school::before,
+.piano-legend-training::before,
+.piano-legend-rotating::before {
+  content: "";
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+.piano-legend-present::before { background: #c8e8c8; }
+.piano-legend-vacation::before { background: #b8d4f0; }
+.piano-legend-sick::before { background: #f0b8b8; }
+.piano-legend-school::before { background: #f8ebb8; }
+.piano-legend-training::before { background: #f0d8b8; }
+.piano-legend-expected::before { content: "·"; font-size: 1.2rem; line-height: 1; color: #b0c8b0; }
+.piano-legend-rotating::before { background: #e8d8f4; }
