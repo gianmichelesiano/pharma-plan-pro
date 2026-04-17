@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
 import { supabase } from "../lib/supabase";
@@ -80,8 +80,16 @@ const ABSENCE_LABELS: Record<string, string> = {
   TRAINING: "For", UNAVAILABLE: "Ind", HR_MEETING: "HR",
 };
 
+function slotToShiftType(slot: string): "MORNING" | "AFTERNOON" | "FULL_DAY" | null {
+  if (slot === "MORNING") return "MORNING";
+  if (slot === "AFTERNOON") return "AFTERNOON";
+  if (slot === "FULL_DAY") return "FULL_DAY";
+  return null;
+}
+
 export function PianificazionePage() {
   const today = new Date();
+  const queryClient = useQueryClient();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const t = useT("piano");
@@ -200,6 +208,80 @@ export function PianificazionePage() {
 
   const isLoading = employeesQuery.isLoading || patternsQuery.isLoading || shiftsQuery.isLoading || absencesQuery.isLoading || rulesQuery.isLoading;
 
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      const toInsert: { employee_id: string; shift_date: string; shift_type: "MORNING" | "AFTERNOON" | "FULL_DAY" }[] = [];
+      for (const emp of employees) {
+        for (const date of days) {
+          const jsDay = new Date(`${date}T12:00:00`).getDay();
+          if (jsDay === 0) continue;
+          const dbWeekday = toDbWeekday(jsDay);
+          const patterns = (patternMap.get(emp.id) ?? [])
+            .filter(p => p.weekday === dbWeekday && p.slot !== "SATURDAY_ROTATING");
+          if (patterns.length === 0) continue;
+          const hasAbsence = (absenceMap.get(emp.id) ?? [])
+            .some(a => date >= a.start_date && date <= a.end_date);
+          if (hasAbsence) continue;
+          for (const pat of patterns) {
+            const shiftType = slotToShiftType(pat.slot);
+            if (shiftType) toInsert.push({ employee_id: emp.id, shift_date: date, shift_type: shiftType });
+          }
+        }
+      }
+      if (toInsert.length === 0) return;
+      const { error } = await supabase
+        .from("shifts")
+        .upsert(toInsert, { onConflict: "employee_id,shift_date,shift_type", ignoreDuplicates: true });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shifts"] }),
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("shifts")
+        .delete()
+        .gte("shift_date", monthStart)
+        .lte("shift_date", monthEnd);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shifts"] }),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({
+      employeeId,
+      date,
+      status,
+    }: {
+      employeeId: string;
+      date: string;
+      status: DayStatus;
+    }) => {
+      if (status.kind === "present") {
+        for (const shift of status.shifts) {
+          const { error } = await supabase.from("shifts").delete().eq("id", shift.id);
+          if (error) throw error;
+        }
+      } else if (status.kind === "expected") {
+        const toInsert = status.patterns
+          .map(p => slotToShiftType(p.slot))
+          .filter((st): st is "MORNING" | "AFTERNOON" | "FULL_DAY" => st !== null)
+          .map(shiftType => ({ employee_id: employeeId, shift_date: date, shift_type: shiftType }));
+        if (toInsert.length > 0) {
+          const { error } = await supabase
+            .from("shifts")
+            .upsert(toInsert, { onConflict: "employee_id,shift_date,shift_type", ignoreDuplicates: true });
+          if (error) throw error;
+        }
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shifts"] }),
+  });
+
+  const isBusy = generateMutation.isPending || clearMutation.isPending || toggleMutation.isPending;
+
   return (
     <section className="page">
       <PageHeader title={t.title} description={t.description} />
@@ -221,7 +303,29 @@ export function PianificazionePage() {
               ))}
             </select>
           </label>
+          <button
+            className="primary"
+            onClick={() => generateMutation.mutate()}
+            disabled={isBusy || isLoading}
+          >
+            {generateMutation.isPending ? t.generating : t.generate}
+          </button>
+          <button
+            className="secondary"
+            onClick={() => {
+              if (window.confirm(t.confirmClear)) clearMutation.mutate();
+            }}
+            disabled={isBusy || isLoading}
+          >
+            {t.clear}
+          </button>
         </div>
+        {generateMutation.isError && (
+          <p className="schedule-error">{(generateMutation.error as Error).message}</p>
+        )}
+        {clearMutation.isError && (
+          <p className="schedule-error">{(clearMutation.error as Error).message}</p>
+        )}
       </div>
       {isLoading ? (
         <p className="mini-muted">{common.loading}</p>
@@ -259,10 +363,13 @@ export function PianificazionePage() {
                       {employees.map(emp => {
                         if (isSunday) return <td key={emp.id} className="piano-cell piano-cell-sunday" />;
                         const status = getDayStatus(emp.id, date, jsDay, patternMap, absenceMap, shiftMap);
+                        const isClickable = !isBusy && (status.kind === "present" || status.kind === "expected");
                         return (
                           <td
                             key={emp.id}
                             className={`piano-cell piano-cell-${status.kind}${status.kind === "absence" ? `-${status.absenceType}` : ""}`}
+                            onClick={isClickable ? () => toggleMutation.mutate({ employeeId: emp.id, date, status }) : undefined}
+                            style={isClickable ? { cursor: "pointer" } : undefined}
                             title={status.kind === "absence" ? (ABSENCE_LABELS[status.absenceType] ?? status.absenceType) : undefined}
                           >
                             {status.kind === "present" ? getShiftLabel(status.shifts) : null}
