@@ -10,7 +10,6 @@ type Shift = Tables<"shifts">;
 type WeeklyPattern = Tables<"weekly_patterns">;
 type Absence = Tables<"absences">;
 type CoverageRule = Tables<"coverage_rules">;
-type ShiftType = Tables<"shifts">["shift_type"];
 
 function toDbWeekday(jsDay: number): number {
   return (jsDay + 6) % 7;
@@ -81,13 +80,6 @@ const ABSENCE_LABELS: Record<string, string> = {
   TRAINING: "For", UNAVAILABLE: "Ind", HR_MEETING: "HR",
 };
 
-export function slotToShiftType(slot: string): ShiftType | null {
-  if (slot === "MORNING") return "MORNING";
-  if (slot === "AFTERNOON") return "AFTERNOON";
-  if (slot === "FULL_DAY") return "FULL_DAY";
-  return null;
-}
-
 export function PianificazionePage() {
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
@@ -117,7 +109,7 @@ export function PianificazionePage() {
   });
 
   const shiftsQuery = useQuery({
-    queryKey: ["shifts", monthStart],
+    queryKey: ["shifts", monthStart, monthEnd],
     queryFn: async () => {
       const { data, error } = await supabase.from("shifts").select("*").gte("shift_date", monthStart).lte("shift_date", monthEnd);
       if (error) throw error;
@@ -126,7 +118,7 @@ export function PianificazionePage() {
   });
 
   const absencesQuery = useQuery({
-    queryKey: ["absences", monthStart],
+    queryKey: ["absences", monthStart, monthEnd],
     queryFn: async () => {
       const { data, error } = await supabase.from("absences").select("*").lte("start_date", monthEnd).gte("end_date", monthStart);
       if (error) throw error;
@@ -206,7 +198,7 @@ export function PianificazionePage() {
     });
   }, [days, employees, shiftMap, rulesQuery.data]);
 
-  const isLoading = employeesQuery.isLoading || patternsQuery.isLoading || shiftsQuery.isLoading || absencesQuery.isLoading;
+  const isLoading = employeesQuery.isLoading || patternsQuery.isLoading || shiftsQuery.isLoading || absencesQuery.isLoading || rulesQuery.isLoading;
 
   return (
     <section className="page">
