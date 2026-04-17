@@ -1,4 +1,4 @@
-create table plan_daily_notes (
+create table daily_notes (
   id uuid primary key default gen_random_uuid(),
   note_date date not null,
   title text,
@@ -9,11 +9,11 @@ create table plan_daily_notes (
   created_at timestamptz not null default now()
 );
 
-create table plan_daily_note_participants (
+create table daily_note_participants (
   id uuid primary key default gen_random_uuid(),
-  daily_note_id uuid not null references plan_daily_notes(id) on delete cascade,
-  employee_id uuid not null references plan_employees(id) on delete cascade,
+  daily_note_id uuid not null references daily_notes(id) on delete cascade,
+  employee_id uuid not null references employees(id) on delete cascade,
   unique (daily_note_id, employee_id)
 );
 
-create index plan_daily_notes_date_idx on plan_daily_notes (note_date);
+create index daily_notes_date_idx on daily_notes (note_date);

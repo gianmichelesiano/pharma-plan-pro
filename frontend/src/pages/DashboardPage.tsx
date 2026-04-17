@@ -10,9 +10,9 @@ export function DashboardPage() {
     queryKey: ["dashboard-counts"],
     queryFn: async () => {
       const [emp, abs, sh] = await Promise.all([
-        supabase.from("plan_employees").select("id", { count: "exact", head: true }).eq("active", true),
-        supabase.from("plan_absences").select("id", { count: "exact", head: true }),
-        supabase.from("plan_shifts").select("id", { count: "exact", head: true }),
+        supabase.from("employees").select("id", { count: "exact", head: true }).eq("active", true),
+        supabase.from("absences").select("id", { count: "exact", head: true }),
+        supabase.from("shifts").select("id", { count: "exact", head: true }),
       ]);
       return {
         employees: emp.count ?? 0,

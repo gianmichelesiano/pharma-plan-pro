@@ -18,7 +18,7 @@ describe("listEmployees", () => {
 
     await listEmployees(true);
 
-    expect(fromMock).toHaveBeenCalledWith("plan_employees");
+    expect(fromMock).toHaveBeenCalledWith("employees");
     expect(eq).toHaveBeenCalledWith("active", true);
   });
 });

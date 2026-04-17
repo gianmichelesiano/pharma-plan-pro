@@ -51,7 +51,7 @@ export function AbsencesPage() {
         <tbody>
           {absences.data?.map((a) => (
             <tr key={a.id}>
-              <td>{a.plan_employees?.display_code} {a.plan_employees?.first_name} {a.plan_employees?.last_name}</td>
+              <td>{a.employees?.display_code} {a.employees?.first_name} {a.employees?.last_name}</td>
               <td>{a.start_date}</td>
               <td>{a.end_date}</td>
               <td>{a.type}</td>

@@ -1,6 +1,6 @@
-create table plan_absences (
+create table absences (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references plan_employees(id) on delete cascade,
+  employee_id uuid not null references employees(id) on delete cascade,
   start_date date not null,
   end_date date not null,
   type absence_type not null,
@@ -12,9 +12,9 @@ create table plan_absences (
   check (end_date >= start_date)
 );
 
-create index plan_absences_employee_idx on plan_absences (employee_id);
-create index plan_absences_range_idx on plan_absences (start_date, end_date);
+create index absences_employee_idx on absences (employee_id);
+create index absences_range_idx on absences (start_date, end_date);
 
 create trigger absences_set_updated_at
-before update on plan_absences
+before update on absences
 for each row execute function set_updated_at();

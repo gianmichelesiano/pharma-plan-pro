@@ -1,5 +1,5 @@
 -- Employee anagrafica. `display_code` is the 2-letter code from Excel (KR, UE, ...).
-create table plan_employees (
+create table employees (
   id uuid primary key default gen_random_uuid(),
   display_code text not null unique,
   first_name text not null,
@@ -15,8 +15,8 @@ create table plan_employees (
   updated_at timestamptz not null default now()
 );
 
-create index plan_employees_active_idx on plan_employees (active);
-create index plan_employees_role_idx on plan_employees (role);
+create index employees_active_idx on employees (active);
+create index employees_role_idx on employees (role);
 
 -- auto-update updated_at
 create or replace function set_updated_at()
@@ -28,5 +28,5 @@ end;
 $$;
 
 create trigger employees_set_updated_at
-before update on plan_employees
+before update on employees
 for each row execute function set_updated_at();

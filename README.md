@@ -20,7 +20,7 @@ Opens http://localhost:5173. Log in with the admin user created during apply pha
 
 ## Structure
 
-- `supabase/migrations/` — SQL schema (8 migrations, all tables prefixed with `plan_`)
+- `supabase/migrations/` — SQL schema (8 migrations)
 - `supabase/seed.sql` — anagrafica + weekly patterns + training courses from `docs/requisiti_muhen.md`
 - `frontend/src/features/` — feature-based folders (employees, absences, shifts)
 - `frontend/src/lib/supabase.ts` — Supabase client singleton

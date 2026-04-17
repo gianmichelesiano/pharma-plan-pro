@@ -61,7 +61,7 @@ export function ShiftsPage() {
               <div className="calendar-day-num">{Number(iso.slice(8, 10))}</div>
               <ul>
                 {dayShifts.map((s) => (
-                  <li key={s.id}>{s.plan_employees?.display_code}{s.shift_type !== "FULL_DAY" ? ` (${s.shift_type[0]})` : ""}</li>
+                  <li key={s.id}>{s.employees?.display_code}{s.shift_type !== "FULL_DAY" ? ` (${s.shift_type[0]})` : ""}</li>
                 ))}
               </ul>
             </button>

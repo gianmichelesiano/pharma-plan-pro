@@ -61,7 +61,7 @@ create trigger on_plan_auth_user_created
   for each row execute procedure public.handle_new_plan_user();
 
 -- Employees
-create table plan_employees (
+create table employees (
   id           serial primary key,
   first_name   text not null,
   last_name    text not null,
@@ -84,7 +84,7 @@ create table plan_shift_templates (
 -- Employee availability
 create table plan_availabilities (
   id           serial primary key,
-  employee_id  integer references plan_employees(id) on delete cascade,
+  employee_id  integer references employees(id) on delete cascade,
   weekday      integer not null,
   slot_name    text not null,
   is_available boolean default true
@@ -93,7 +93,7 @@ create table plan_availabilities (
 -- Time off requests
 create table plan_time_off (
   id          serial primary key,
-  employee_id integer references plan_employees(id) on delete cascade,
+  employee_id integer references employees(id) on delete cascade,
   start_date  date not null,
   end_date    date not null,
   reason      text default 'vacation',
@@ -101,7 +101,7 @@ create table plan_time_off (
 );
 
 -- Coverage rules
-create table plan_coverage_rules (
+create table coverage_rules (
   id               serial primary key,
   weekday          integer not null,
   slot_name        text not null,
@@ -125,7 +125,7 @@ create table plan_shift_assignments (
   schedule_id integer references plan_schedules(id) on delete cascade,
   date        date not null,
   slot_name   text not null,
-  employee_id integer references plan_employees(id),
+  employee_id integer references employees(id),
   role        text not null,
   source      text default 'generated'  -- generated, manual
 );
@@ -136,16 +136,16 @@ create table plan_shift_assignments (
 ```sql
 -- Enable RLS on all tables
 alter table plan_profiles enable row level security;
-alter table plan_employees enable row level security;
+alter table employees enable row level security;
 alter table plan_shift_templates enable row level security;
 alter table plan_availabilities enable row level security;
 alter table plan_time_off enable row level security;
-alter table plan_coverage_rules enable row level security;
+alter table coverage_rules enable row level security;
 alter table plan_schedules enable row level security;
 alter table plan_shift_assignments enable row level security;
 
 -- Authenticated users can read/write all plan_ tables (single pharmacy)
-create policy "authenticated full access" on plan_employees
+create policy "authenticated full access" on employees
   for all using (auth.role() = 'authenticated');
 
 -- (repeat for all plan_ tables)
@@ -177,16 +177,16 @@ Replace `GET/POST/PUT/DELETE /employees` with Supabase client calls.
 import { supabase } from './supabase'
 
 export const getEmployees = () =>
-  supabase.from('plan_employees').select('*').eq('active', true)
+  supabase.from('employees').select('*').eq('active', true)
 
 export const createEmployee = (data: EmployeeCreate) =>
-  supabase.from('plan_employees').insert(data).select().single()
+  supabase.from('employees').insert(data).select().single()
 
 export const updateEmployee = (id: number, data: EmployeeUpdate) =>
-  supabase.from('plan_employees').update(data).eq('id', id).select().single()
+  supabase.from('employees').update(data).eq('id', id).select().single()
 
 export const deleteEmployee = (id: number) =>
-  supabase.from('plan_employees').update({ active: false }).eq('id', id)
+  supabase.from('employees').update({ active: false }).eq('id', id)
 ```
 
 ---
@@ -210,7 +210,7 @@ export const setAvailability = (employeeId: number, slots: AvailabilitySlot[]) =
 
 ```typescript
 export const getTimeOff = () =>
-  supabase.from('plan_time_off').select('*, plan_employees(first_name, last_name)')
+  supabase.from('plan_time_off').select('*, employees(first_name, last_name)')
 
 export const createTimeOff = (data: TimeOffCreate) =>
   supabase.from('plan_time_off').insert(data).select().single()
@@ -228,10 +228,10 @@ export const getShiftTemplates = () =>
   supabase.from('plan_shift_templates').select('*').order('weekday')
 
 export const getCoverageRules = () =>
-  supabase.from('plan_coverage_rules').select('*').order('weekday')
+  supabase.from('coverage_rules').select('*').order('weekday')
 
 export const updateCoverageRules = (rules: CoverageRule[]) =>
-  supabase.from('plan_coverage_rules').upsert(rules, { onConflict: 'weekday,slot_name,role' })
+  supabase.from('coverage_rules').upsert(rules, { onConflict: 'weekday,slot_name,role' })
 ```
 
 ---
@@ -273,11 +273,11 @@ Once all phases done and tested:
 
 | FastAPI Route | Supabase Table | Notes |
 |---|---|---|
-| `GET /employees` | `plan_employees` | |
+| `GET /employees` | `employees` | |
 | `GET/PUT /employees/:id/availability` | `plan_availabilities` | upsert on conflict |
 | `GET/POST/DELETE /time-off` | `plan_time_off` | |
 | `GET /rules/opening-hours` | `plan_shift_templates` | read-only for now |
-| `GET/PUT /rules/coverage` | `plan_coverage_rules` | |
+| `GET/PUT /rules/coverage` | `coverage_rules` | |
 | `POST /schedules/generate` | `plan_schedules` + `plan_shift_assignments` | algorithm runs client-side |
 | `GET/POST/PUT/DELETE /schedules/:id/assignments` | `plan_shift_assignments` | |
 

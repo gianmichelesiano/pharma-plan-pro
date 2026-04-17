@@ -5,7 +5,7 @@
 -- SEED 1/3 — Employees (§2)
 -- `active=false` for terminated staff (MW, SI).
 -- ============================================================
-insert into plan_employees (display_code, first_name, last_name, email, role, employment_status, hired_at, left_at, weekly_hours_pct, active) values
+insert into employees (display_code, first_name, last_name, email, role, employment_status, hired_at, left_at, weekly_hours_pct, active) values
   ('KR', 'Katja',       'Renette',      'katjarenette@gmx.ch',             'pharmacist',     'active',     null,          null,          100.00, true),
   ('UE', 'Ursula',      'Egloff',       'zentrum-apo.muhen@bluewin.ch',    'pharmacist',     'active',     null,          null,           40.00, true),
   ('CR', 'Carla',       'Russo',        'russocarla78@gmail.com',          'pharmacist',     'active',     null,          null,           60.00, true),
@@ -30,8 +30,8 @@ insert into plan_employees (display_code, first_name, last_name, email, role, em
 -- SEED 2/3 — Weekly patterns (§3)
 -- weekday: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
 -- ============================================================
-with emp as (select id, display_code from plan_employees)
-insert into plan_weekly_patterns (employee_id, weekday, slot)
+with emp as (select id, display_code from employees)
+insert into weekly_patterns (employee_id, weekday, slot)
 select e.id, wp.weekday, wp.slot
 from emp e
 join (values
@@ -126,7 +126,7 @@ join (values
 -- ============================================================
 -- SEED 3/3 — Training courses + participants (§9)
 -- ============================================================
-insert into plan_training_courses (code, title, location, start_date, start_time, end_time) values
+insert into training_courses (code, title, location, start_date, start_time, end_time) values
   ('TOPKOMP_S1_A', 'TopKompetenz Schulung 1 — Migräne + Ohrengesundheit (giro A)',       'Baden/Olten', '2026-03-10', '09:00', '17:00'),
   ('TOPKOMP_S1_B', 'TopKompetenz Schulung 1 — Migräne + Ohrengesundheit (giro B)',       'Baden/Olten', '2026-03-24', '09:00', '17:00'),
   ('TOPKOMP_S2',   'TopKompetenz Schulung 2 — Reisegesundheit + Frauenthemen',           'Baden/Olten', '2026-06-11', '09:00', '17:00'),
@@ -146,9 +146,9 @@ insert into plan_training_courses (code, title, location, start_date, start_time
   ('MEDINF_12_05', 'Medinform Fortbildung',                                              'Zürich',      '2026-05-12', '08:00', '12:00'),
   ('MEDINF_28_05', 'Medinform Fortbildung',                                              'Zürich',      '2026-05-28', '08:00', '12:00');
 
-with e as (select id, display_code from plan_employees),
-     c as (select id, code from plan_training_courses)
-insert into plan_training_participants (training_course_id, employee_id)
+with e as (select id, display_code from employees),
+     c as (select id, code from training_courses)
+insert into training_participants (training_course_id, employee_id)
 select c.id, e.id
 from (values
   ('TOPKOMP_S1_A', 'IA'), ('TOPKOMP_S1_A', 'JH'),

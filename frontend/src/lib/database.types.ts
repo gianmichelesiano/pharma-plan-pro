@@ -6,7 +6,7 @@ export type Database = {
   public: {
     Tables: {
       // from 20260417_0002_employees.sql
-      plan_employees: {
+      employees: {
         Row: {
           id: string;
           display_code: string;
@@ -56,7 +56,7 @@ export type Database = {
       };
 
       // from 20260417_0003_weekly_patterns.sql
-      plan_weekly_patterns: {
+      weekly_patterns: {
         Row: {
           id: string;
           employee_id: string;
@@ -85,7 +85,7 @@ export type Database = {
       };
 
       // from 20260417_0004_shifts.sql
-      plan_shifts: {
+      shifts: {
         Row: {
           id: string;
           employee_id: string;
@@ -123,7 +123,7 @@ export type Database = {
       };
 
       // from 20260417_0005_absences.sql (+ FK added in 20260417_0006_training.sql)
-      plan_absences: {
+      absences: {
         Row: {
           id: string;
           employee_id: string;
@@ -164,7 +164,7 @@ export type Database = {
       };
 
       // from 20260417_0006_training.sql
-      plan_training_courses: {
+      training_courses: {
         Row: {
           id: string;
           code: string;
@@ -205,7 +205,7 @@ export type Database = {
       };
 
       // from 20260417_0006_training.sql
-      plan_training_participants: {
+      training_participants: {
         Row: {
           id: string;
           training_course_id: string;
@@ -228,7 +228,7 @@ export type Database = {
       };
 
       // from 20260417_0007_daily_notes.sql
-      plan_daily_notes: {
+      daily_notes: {
         Row: {
           id: string;
           note_date: string;
@@ -263,7 +263,7 @@ export type Database = {
       };
 
       // from 20260417_0007_daily_notes.sql
-      plan_daily_note_participants: {
+      daily_note_participants: {
         Row: {
           id: string;
           daily_note_id: string;
@@ -283,7 +283,7 @@ export type Database = {
       };
 
       // from 20260417_0008_coverage_rules.sql
-      plan_coverage_rules: {
+      coverage_rules: {
         Row: {
           id: string;
           weekday: number;

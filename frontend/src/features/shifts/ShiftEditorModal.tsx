@@ -41,7 +41,7 @@ export function ShiftEditorModal({ date, existing, onClose }: Props) {
       <ul>
         {existing.map((s) => (
           <li key={s.id}>
-            {s.plan_employees?.display_code} — {s.shift_type}
+            {s.employees?.display_code} — {s.shift_type}
             {s.note && ` (${s.note})`}
             <button onClick={() => del.mutate(s.id)}>✕</button>
           </li>

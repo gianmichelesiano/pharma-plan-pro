@@ -1,4 +1,4 @@
-create table plan_coverage_rules (
+create table coverage_rules (
   id uuid primary key default gen_random_uuid(),
   weekday smallint not null check (weekday between 0 and 6),
   slot text not null check (slot in ('MORNING', 'AFTERNOON', 'FULL_DAY')),

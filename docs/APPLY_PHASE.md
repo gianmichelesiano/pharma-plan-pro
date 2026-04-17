@@ -81,19 +81,19 @@ Replace `<DB_PASSWORD>` with the DB password from Step 2. URL-encode it if it co
 
 | Table                      | Rows |
 |----------------------------|------|
-| `plan_employees`           | 19   |
-| `plan_weekly_patterns`     | 67   |
-| `plan_training_courses`    | 18   |
-| `plan_training_participants` | 27 |
+| `employees`           | 19   |
+| `weekly_patterns`     | 67   |
+| `training_courses`    | 18   |
+| `training_participants` | 27 |
 
 Verify in the Dashboard **Table editor** or with:
 
 ```sql
 select
-  (select count(*) from plan_employees)             as employees,
-  (select count(*) from plan_weekly_patterns)       as weekly_patterns,
-  (select count(*) from plan_training_courses)      as training_courses,
-  (select count(*) from plan_training_participants) as training_participants;
+  (select count(*) from employees)             as employees,
+  (select count(*) from weekly_patterns)       as weekly_patterns,
+  (select count(*) from training_courses)      as training_courses,
+  (select count(*) from training_participants) as training_participants;
 ```
 
 ---
@@ -177,12 +177,12 @@ If you want to wipe the planning data and re-seed while keeping the `admin@tpz.l
 
 ```sql
 truncate table
-  plan_training_participants,
-  plan_training_courses,
-  plan_weekly_patterns,
-  plan_absences,
-  plan_shifts,
-  plan_employees
+  training_participants,
+  training_courses,
+  weekly_patterns,
+  absences,
+  shifts,
+  employees
 restart identity cascade;
 ```
 
