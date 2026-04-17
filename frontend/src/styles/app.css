@@ -565,3 +565,10 @@ input {
     grid-template-columns: 1fr;
   }
 }
+
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 16px; }
+.calendar-head { font-weight: 600; padding: 6px; text-align: center; }
+.calendar-cell { min-height: 80px; text-align: left; padding: 4px; background: #f8f8f2; border: 1px solid #ddd; cursor: pointer; }
+.calendar-cell.is-outside { opacity: 0.35; }
+.calendar-cell ul { margin: 4px 0 0; padding: 0; list-style: none; font-size: 0.85em; }
+.calendar-day-num { font-weight: 600; }
