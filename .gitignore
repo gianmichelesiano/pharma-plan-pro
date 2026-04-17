@@ -1,0 +1,17 @@
+node_modules
+.DS_Store
+dist
+*.tsbuildinfo
+
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Supabase
+supabase/.branches
+supabase/.temp
+supabase/logs
