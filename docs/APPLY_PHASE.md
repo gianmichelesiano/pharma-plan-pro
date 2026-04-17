@@ -4,8 +4,8 @@ This file documents the one-time setup to bring the repo online against Supabase
 
 The MVP code is complete (tagged `v0.1.0-pre-apply`). The remote Cloud project has NOT yet been linked, migrations have NOT been pushed, and the seed has NOT been run. Work through the steps below in order.
 
-Project ref: **`zwbuiccyxebgfwlguscl`**
-Dashboard: <https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl>
+Project ref: **`tgwuvvptqjnqzvcphvbn`**
+Dashboard: <https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn>
 
 ---
 
@@ -21,17 +21,17 @@ If you already ran `supabase login` on this machine recently, you can skip this 
 
 ---
 
-## 2. `supabase link --project-ref zwbuiccyxebgfwlguscl`
+## 2. `supabase link --project-ref tgwuvvptqjnqzvcphvbn`
 
 ```bash
 cd /Users/gianmichele/Development/Personal/pharma-plan-pro
-supabase link --project-ref zwbuiccyxebgfwlguscl
+supabase link --project-ref tgwuvvptqjnqzvcphvbn
 ```
 
 The CLI will prompt for the **database password** (not the dashboard password). You can find or reset it at:
 
 Dashboard → **Settings → Database → Connection string / Reset database password**
-<https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/settings/database>
+<https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/settings/database>
 
 Successful link writes `supabase/.temp/project-ref` and caches credentials. `./scripts/start.sh` checks for this marker.
 
@@ -65,7 +65,7 @@ Two options:
 **Option A — psql (from shell):**
 
 ```bash
-psql "postgres://postgres:<DB_PASSWORD>@db.zwbuiccyxebgfwlguscl.supabase.co:5432/postgres" \
+psql "postgres://postgres:<DB_PASSWORD>@db.tgwuvvptqjnqzvcphvbn.supabase.co:5432/postgres" \
   -f supabase/seed.sql
 ```
 
@@ -73,7 +73,7 @@ Replace `<DB_PASSWORD>` with the DB password from Step 2. URL-encode it if it co
 
 **Option B — Dashboard SQL editor (no psql needed):**
 
-1. Open <https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/sql/new>
+1. Open <https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/sql/new>
 2. Paste the full content of `supabase/seed.sql`
 3. Click **Run**
 
@@ -116,7 +116,7 @@ cd frontend && npm run typecheck
 
 ## 6. Create the admin user
 
-1. Open <https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/auth/users>
+1. Open <https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/auth/users>
 2. Click **Add user → Create new user**
 3. Fill in:
    - **Email:** `admin@tpz.local`
@@ -195,6 +195,6 @@ Then re-run the seed (Step 4). Auth users live in the `auth.users` table and are
 The `service_role` key was shared in chat during planning. It bypasses Row-Level Security and must be treated as a secret.
 
 **Rotate it now:** Dashboard → **Settings → API → Reset `service_role` secret**
-<https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/settings/api>
+<https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/settings/api>
 
 The MVP frontend only uses the `anon` public key (`VITE_SUPABASE_ANON_KEY` in `frontend/.env.local`), so rotating `service_role` will not break the app. If you later build a backend worker or migration tool that needs `service_role`, store it in a password manager or CI secret store — never commit it and never paste it into a chat transcript.

@@ -260,7 +260,7 @@ git commit -m "chore: bootstrap Vite + React + TS frontend skeleton"
 
 ## Task 2: Supabase Cloud link + env
 
-**Backend:** Supabase Cloud (no Docker). Project ref: `zwbuiccyxebgfwlguscl`.
+**Backend:** Supabase Cloud (no Docker). Project ref: `tgwuvvptqjnqzvcphvbn`.
 
 **Files:**
 - Create: `pharma-plan-pro/supabase/config.toml` (via `supabase init`)
@@ -280,11 +280,11 @@ Expected: creates `supabase/config.toml` and `supabase/.gitignore`. Answer "n" t
 - [ ] **Step 2: Link to the remote Cloud project**
 
 ```bash
-supabase link --project-ref zwbuiccyxebgfwlguscl
+supabase link --project-ref tgwuvvptqjnqzvcphvbn
 ```
 Prompts for DB password (the one set at project creation). Expected output: `Finished supabase link.`
 
-If the password is unknown, reset it in https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/settings/database → "Reset database password".
+If the password is unknown, reset it in https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/settings/database → "Reset database password".
 
 - [ ] **Step 3: Create `frontend/.env.example`**
 
@@ -298,7 +298,7 @@ VITE_SUPABASE_ANON_KEY=replace-me
 - [ ] **Step 4: Create `frontend/.env.local`** (gitignored)
 
 ```
-VITE_SUPABASE_URL=https://zwbuiccyxebgfwlguscl.supabase.co
+VITE_SUPABASE_URL=https://tgwuvvptqjnqzvcphvbn.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3YnVpY2N5eGViZ2Z3bGd1c2NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzQ5MjQsImV4cCI6MjA5MTY1MDkyNH0.chm2SA7vllO8Ftsx_XEEIWv8eBDMH4hduGnQ0YXHDPI
 ```
 
@@ -309,7 +309,7 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" \
   "$VITE_SUPABASE_URL/rest/v1/?apikey=$VITE_SUPABASE_ANON_KEY" \
-  --url "https://zwbuiccyxebgfwlguscl.supabase.co/rest/v1/"
+  --url "https://tgwuvvptqjnqzvcphvbn.supabase.co/rest/v1/"
 ```
 Expected: 200. (You can also visit the dashboard to confirm the project is live.)
 
@@ -416,7 +416,7 @@ Expected: lists the two new migrations and applies them on the remote. Confirm w
 
 - [ ] **Step 4: Verify in remote Studio**
 
-Open https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/editor → `plan_employees` exists with the columns above.
+Open https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/editor → `plan_employees` exists with the columns above.
 
 - [ ] **Step 5: Commit**
 
@@ -658,18 +658,18 @@ Supabase CLI does not auto-run `seed.sql` against remote DBs. Run it manually vi
 
 ```bash
 # Get the direct connection string from:
-# https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/settings/database
+# https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/settings/database
 # (use the "URI" connection string; it needs the DB password)
-psql "postgres://postgres:<DB_PASSWORD>@db.zwbuiccyxebgfwlguscl.supabase.co:5432/postgres" \
+psql "postgres://postgres:<DB_PASSWORD>@db.tgwuvvptqjnqzvcphvbn.supabase.co:5432/postgres" \
   -f supabase/seed.sql
 ```
 Expected: `INSERT 0 19` for employees. No errors.
 
-Alternative if `psql` not installed: paste the content of `supabase/seed.sql` into https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/sql/new and run.
+Alternative if `psql` not installed: paste the content of `supabase/seed.sql` into https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/sql/new and run.
 
 - [ ] **Step 3: Verify in remote Studio**
 
-Open https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/editor → `plan_employees` table → should show 19 rows.
+Open https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/editor → `plan_employees` table → should show 19 rows.
 
 - [ ] **Step 4: Commit**
 
@@ -842,7 +842,7 @@ join (values
 
 - [ ] **Step 3: Re-run seed against Cloud**
 
-Since Task 6 already loaded employees, the appended blocks can be run incrementally OR the whole seed can be re-applied after truncating. Simplest: truncate + re-seed to keep it idempotent. In the SQL Editor at https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/sql/new run:
+Since Task 6 already loaded employees, the appended blocks can be run incrementally OR the whole seed can be re-applied after truncating. Simplest: truncate + re-seed to keep it idempotent. In the SQL Editor at https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/sql/new run:
 
 ```sql
 truncate table plan_training_participants, plan_training_courses, plan_weekly_patterns, plan_absences, plan_shifts, plan_employees restart identity cascade;
@@ -851,7 +851,7 @@ truncate table plan_training_participants, plan_training_courses, plan_weekly_pa
 Then re-run the full `supabase/seed.sql`:
 
 ```bash
-psql "postgres://postgres:<DB_PASSWORD>@db.zwbuiccyxebgfwlguscl.supabase.co:5432/postgres" \
+psql "postgres://postgres:<DB_PASSWORD>@db.tgwuvvptqjnqzvcphvbn.supabase.co:5432/postgres" \
   -f supabase/seed.sql
 ```
 
@@ -1079,7 +1079,7 @@ export function LoginPage() {
 
 - [ ] **Step 4: Create a test user in Supabase Auth**
 
-In the Cloud dashboard: https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/auth/users → "Add user" → "Create new user" → email `admin@tpz.local`, password `TestPass123!`, tick "Auto Confirm User". (Email confirmation is ON by default in Cloud; auto-confirming the first admin avoids the flow.)
+In the Cloud dashboard: https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/auth/users → "Add user" → "Create new user" → email `admin@tpz.local`, password `TestPass123!`, tick "Auto Confirm User". (Email confirmation is ON by default in Cloud; auto-confirming the first admin avoids the flow.)
 
 - [ ] **Step 5: Commit**
 
@@ -2364,7 +2364,7 @@ Pharmacy shift planning app for TPZ (Top Pharm Zentrum). React + Vite + TypeScri
 ```bash
 # 1. Link to the Cloud project (one-time)
 cd /path/to/pharma-plan-pro
-supabase link --project-ref zwbuiccyxebgfwlguscl
+supabase link --project-ref tgwuvvptqjnqzvcphvbn
 
 # 2. Create env file for Vite
 cp frontend/.env.example frontend/.env.local
@@ -2374,11 +2374,11 @@ cp frontend/.env.example frontend/.env.local
 supabase db push
 
 # 4. Apply seed (via psql or SQL Editor)
-psql "postgres://postgres:<DB_PASSWORD>@db.zwbuiccyxebgfwlguscl.supabase.co:5432/postgres" \
+psql "postgres://postgres:<DB_PASSWORD>@db.tgwuvvptqjnqzvcphvbn.supabase.co:5432/postgres" \
   -f supabase/seed.sql
 
 # 5. Create an admin user in the dashboard
-# → https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/auth/users
+# → https://supabase.com/dashboard/project/tgwuvvptqjnqzvcphvbn/auth/users
 #   email: admin@tpz.local
 #   password: TestPass123!
 #   tick "Auto Confirm User"
