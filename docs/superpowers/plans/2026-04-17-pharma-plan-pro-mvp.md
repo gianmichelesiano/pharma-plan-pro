@@ -374,7 +374,7 @@ create type absence_status as enum (
 
 ```sql
 -- Employee anagrafica. `display_code` is the 2-letter code from Excel (KR, UE, ...).
-create table employees (
+create table plan_employees (
   id uuid primary key default gen_random_uuid(),
   display_code text not null unique,
   first_name text not null,
@@ -390,8 +390,8 @@ create table employees (
   updated_at timestamptz not null default now()
 );
 
-create index employees_active_idx on employees (active);
-create index employees_role_idx on employees (role);
+create index plan_employees_active_idx on plan_employees (active);
+create index plan_employees_role_idx on plan_employees (role);
 
 -- auto-update updated_at
 create or replace function set_updated_at()
@@ -403,7 +403,7 @@ end;
 $$;
 
 create trigger employees_set_updated_at
-before update on employees
+before update on plan_employees
 for each row execute function set_updated_at();
 ```
 
@@ -416,7 +416,7 @@ Expected: lists the two new migrations and applies them on the remote. Confirm w
 
 - [ ] **Step 4: Verify in remote Studio**
 
-Open https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/editor → `employees` exists with the columns above.
+Open https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/editor → `plan_employees` exists with the columns above.
 
 - [ ] **Step 5: Commit**
 
@@ -439,9 +439,9 @@ git commit -m "feat(db): add enums + employees table"
 -- Base working pattern per employee, per weekday, per slot.
 -- weekday: 0 = Mon, 1 = Tue, ..., 6 = Sun (ISO: Mon-first).
 -- slot: 'MORNING' | 'AFTERNOON' | 'FULL_DAY' | 'SATURDAY_ROTATING'.
-create table weekly_patterns (
+create table plan_weekly_patterns (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references employees(id) on delete cascade,
+  employee_id uuid not null references plan_employees(id) on delete cascade,
   weekday smallint not null check (weekday between 0 and 6),
   slot text not null check (slot in ('MORNING', 'AFTERNOON', 'FULL_DAY', 'SATURDAY_ROTATING')),
   active boolean not null default true,
@@ -449,17 +449,17 @@ create table weekly_patterns (
   unique (employee_id, weekday, slot)
 );
 
-create index weekly_patterns_employee_idx on weekly_patterns (employee_id);
-create index weekly_patterns_weekday_idx on weekly_patterns (weekday);
+create index plan_weekly_patterns_employee_idx on plan_weekly_patterns (employee_id);
+create index plan_weekly_patterns_weekday_idx on plan_weekly_patterns (weekday);
 ```
 
 - [ ] **Step 2: Write `20260417_0004_shifts.sql`**
 
 ```sql
 -- Concrete planned shift for one employee on one date.
-create table shifts (
+create table plan_shifts (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references employees(id) on delete cascade,
+  employee_id uuid not null references plan_employees(id) on delete cascade,
   shift_date date not null,
   shift_type shift_type not null,
   start_time time,                           -- null = pharmacy default opening
@@ -470,11 +470,11 @@ create table shifts (
   unique (employee_id, shift_date, shift_type)
 );
 
-create index shifts_date_idx on shifts (shift_date);
-create index shifts_employee_idx on shifts (employee_id);
+create index plan_shifts_date_idx on plan_shifts (shift_date);
+create index plan_shifts_employee_idx on plan_shifts (employee_id);
 
 create trigger shifts_set_updated_at
-before update on shifts
+before update on plan_shifts
 for each row execute function set_updated_at();
 ```
 
@@ -483,7 +483,7 @@ for each row execute function set_updated_at();
 ```bash
 supabase db push
 ```
-Expected: both migrations apply on Cloud. Check in remote Studio that `weekly_patterns` and `shifts` tables exist.
+Expected: both migrations apply on Cloud. Check in remote Studio that `plan_weekly_patterns` and `plan_shifts` tables exist.
 
 - [ ] **Step 4: Commit**
 
@@ -505,9 +505,9 @@ git commit -m "feat(db): add weekly_patterns + shifts tables"
 - [ ] **Step 1: Write `20260417_0005_absences.sql`**
 
 ```sql
-create table absences (
+create table plan_absences (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references employees(id) on delete cascade,
+  employee_id uuid not null references plan_employees(id) on delete cascade,
   start_date date not null,
   end_date date not null,
   type absence_type not null,
@@ -519,18 +519,18 @@ create table absences (
   check (end_date >= start_date)
 );
 
-create index absences_employee_idx on absences (employee_id);
-create index absences_range_idx on absences (start_date, end_date);
+create index plan_absences_employee_idx on plan_absences (employee_id);
+create index plan_absences_range_idx on plan_absences (start_date, end_date);
 
 create trigger absences_set_updated_at
-before update on absences
+before update on plan_absences
 for each row execute function set_updated_at();
 ```
 
 - [ ] **Step 2: Write `20260417_0006_training.sql`**
 
 ```sql
-create table training_courses (
+create table plan_training_courses (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,                 -- es. 'TOPKOMP_S1_2026_03_10'
   title text not null,                       -- es. 'TopKompetenz Schulung 1 — Migräne + Ohrengesundheit'
@@ -543,27 +543,27 @@ create table training_courses (
   created_at timestamptz not null default now()
 );
 
-create table training_participants (
+create table plan_training_participants (
   id uuid primary key default gen_random_uuid(),
-  training_course_id uuid not null references training_courses(id) on delete cascade,
-  employee_id uuid not null references employees(id) on delete cascade,
+  training_course_id uuid not null references plan_training_courses(id) on delete cascade,
+  employee_id uuid not null references plan_employees(id) on delete cascade,
   confirmed boolean not null default true,
   unique (training_course_id, employee_id)
 );
 
 -- Add deferred FK from absences.training_course_id
-alter table absences
+alter table plan_absences
   add constraint absences_training_course_fk
-  foreign key (training_course_id) references training_courses(id) on delete set null;
+  foreign key (training_course_id) references plan_training_courses(id) on delete set null;
 
-create index training_courses_date_idx on training_courses (start_date);
-create index training_participants_employee_idx on training_participants (employee_id);
+create index plan_training_courses_date_idx on plan_training_courses (start_date);
+create index plan_training_participants_employee_idx on plan_training_participants (employee_id);
 ```
 
 - [ ] **Step 3: Write `20260417_0007_daily_notes.sql`**
 
 ```sql
-create table daily_notes (
+create table plan_daily_notes (
   id uuid primary key default gen_random_uuid(),
   note_date date not null,
   title text,
@@ -574,20 +574,20 @@ create table daily_notes (
   created_at timestamptz not null default now()
 );
 
-create table daily_note_participants (
+create table plan_daily_note_participants (
   id uuid primary key default gen_random_uuid(),
-  daily_note_id uuid not null references daily_notes(id) on delete cascade,
-  employee_id uuid not null references employees(id) on delete cascade,
+  daily_note_id uuid not null references plan_daily_notes(id) on delete cascade,
+  employee_id uuid not null references plan_employees(id) on delete cascade,
   unique (daily_note_id, employee_id)
 );
 
-create index daily_notes_date_idx on daily_notes (note_date);
+create index plan_daily_notes_date_idx on plan_daily_notes (note_date);
 ```
 
 - [ ] **Step 4: Write `20260417_0008_coverage_rules.sql`**
 
 ```sql
-create table coverage_rules (
+create table plan_coverage_rules (
   id uuid primary key default gen_random_uuid(),
   weekday smallint not null check (weekday between 0 and 6),
   slot text not null check (slot in ('MORNING', 'AFTERNOON', 'FULL_DAY')),
@@ -604,7 +604,7 @@ create table coverage_rules (
 ```bash
 supabase db push
 ```
-Expected: 4 migrations apply on Cloud. Remote Studio shows 9 domain tables total (`employees`, `weekly_patterns`, `shifts`, `absences`, `training_courses`, `training_participants`, `daily_notes`, `daily_note_participants`, `coverage_rules`).
+Expected: 4 migrations apply on Cloud. Remote Studio shows 9 domain tables total (`plan_employees`, `plan_weekly_patterns`, `plan_shifts`, `plan_absences`, `plan_training_courses`, `plan_training_participants`, `plan_daily_notes`, `plan_daily_note_participants`, `plan_coverage_rules`).
 
 - [ ] **Step 6: Commit**
 
@@ -630,7 +630,7 @@ Maps 1:1 with `docs/requisiti_muhen.md` Section 2. `SI` and `JF` entries kept wi
 ```sql
 -- SEED 1/3 — Employees (from docs/requisiti_muhen.md §2)
 -- `active=false` for terminated staff (MW, SI).
-insert into employees (display_code, first_name, last_name, email, role, employment_status, hired_at, left_at, weekly_hours_pct, active) values
+insert into plan_employees (display_code, first_name, last_name, email, role, employment_status, hired_at, left_at, weekly_hours_pct, active) values
   ('KR', 'Katja',       'Renette',      'katjarenette@gmx.ch',             'pharmacist',     'active',     null,          null,          100.00, true),
   ('UE', 'Ursula',      'Egloff',       'zentrum-apo.muhen@bluewin.ch',    'pharmacist',     'active',     null,          null,           40.00, true),
   ('CR', 'Carla',       'Russo',        'russocarla78@gmail.com',          'pharmacist',     'active',     null,          null,           60.00, true),
@@ -669,7 +669,7 @@ Alternative if `psql` not installed: paste the content of `supabase/seed.sql` in
 
 - [ ] **Step 3: Verify in remote Studio**
 
-Open https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/editor → `employees` table → should show 19 rows.
+Open https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/editor → `plan_employees` table → should show 19 rows.
 
 - [ ] **Step 4: Commit**
 
@@ -692,8 +692,8 @@ Source: `docs/requisiti_muhen.md` §3. Weekday numbers: 0=Mon ... 5=Sat. `FULL_D
 ```sql
 -- SEED 2/3 — Weekly patterns (from docs/requisiti_muhen.md §3)
 -- Helper lookup: we insert by display_code.
-with emp as (select id, display_code from employees)
-insert into weekly_patterns (employee_id, weekday, slot)
+with emp as (select id, display_code from plan_employees)
+insert into plan_weekly_patterns (employee_id, weekday, slot)
 select e.id, wp.weekday, wp.slot
 from emp e
 join (values
@@ -792,7 +792,7 @@ Source: `docs/requisiti_muhen.md` §9.
 
 ```sql
 -- SEED 3/3 — Training courses (from docs/requisiti_muhen.md §9)
-insert into training_courses (code, title, location, start_date, start_time, end_time) values
+insert into plan_training_courses (code, title, location, start_date, start_time, end_time) values
   ('TOPKOMP_S1_A', 'TopKompetenz Schulung 1 — Migräne + Ohrengesundheit (giro A)',       'Baden/Olten', '2026-03-10', '09:00', '17:00'),
   ('TOPKOMP_S1_B', 'TopKompetenz Schulung 1 — Migräne + Ohrengesundheit (giro B)',       'Baden/Olten', '2026-03-24', '09:00', '17:00'),
   ('TOPKOMP_S2',   'TopKompetenz Schulung 2 — Reisegesundheit + Frauenthemen',           'Baden/Olten', '2026-06-11', '09:00', '17:00'),
@@ -813,9 +813,9 @@ insert into training_courses (code, title, location, start_date, start_time, end
   ('MEDINF_28_05', 'Medinform Fortbildung',                                              'Zürich',      '2026-05-28', '08:00', '12:00');
 
 -- Link participants
-with e as (select id, display_code from employees),
-     c as (select id, code from training_courses)
-insert into training_participants (training_course_id, employee_id)
+with e as (select id, display_code from plan_employees),
+     c as (select id, code from plan_training_courses)
+insert into plan_training_participants (training_course_id, employee_id)
 select c.id, e.id
 from c
 join (values
@@ -845,7 +845,7 @@ join (values
 Since Task 6 already loaded employees, the appended blocks can be run incrementally OR the whole seed can be re-applied after truncating. Simplest: truncate + re-seed to keep it idempotent. In the SQL Editor at https://supabase.com/dashboard/project/zwbuiccyxebgfwlguscl/sql/new run:
 
 ```sql
-truncate table training_participants, training_courses, weekly_patterns, absences, shifts, employees restart identity cascade;
+truncate table plan_training_participants, plan_training_courses, plan_weekly_patterns, plan_absences, plan_shifts, plan_employees restart identity cascade;
 ```
 
 Then re-run the full `supabase/seed.sql`:
@@ -856,10 +856,10 @@ psql "postgres://postgres:<DB_PASSWORD>@db.zwbuiccyxebgfwlguscl.supabase.co:5432
 ```
 
 Expected: Studio now shows:
-- `employees`: 19 rows
-- `weekly_patterns`: 52+ rows
-- `training_courses`: 18 rows
-- `training_participants`: 25 rows
+- `plan_employees`: 19 rows
+- `plan_weekly_patterns`: 52+ rows
+- `plan_training_courses`: 18 rows
+- `plan_training_participants`: 25 rows
 
 - [ ] **Step 4: Commit**
 
@@ -882,7 +882,7 @@ Run from `pharma-plan-pro/`:
 ```bash
 supabase gen types typescript --linked > frontend/src/lib/database.types.ts
 ```
-Expected: file with `export type Database = { public: { Tables: { employees: { Row: ... } ... } } }`. Requires the project to be linked (Task 2 Step 2).
+Expected: file with `export type Database = { public: { Tables: { plan_employees: { Row: ... } ... } } }`. Requires the project to be linked (Task 2 Step 2).
 
 - [ ] **Step 2: Write `frontend/src/lib/supabase.ts`**
 
@@ -1544,9 +1544,9 @@ export function DashboardPage() {
     queryKey: ["dashboard-counts"],
     queryFn: async () => {
       const [emp, abs, sh] = await Promise.all([
-        supabase.from("employees").select("id", { count: "exact", head: true }).eq("active", true),
-        supabase.from("absences").select("id", { count: "exact", head: true }),
-        supabase.from("shifts").select("id", { count: "exact", head: true }),
+        supabase.from("plan_employees").select("id", { count: "exact", head: true }).eq("active", true),
+        supabase.from("plan_absences").select("id", { count: "exact", head: true }),
+        supabase.from("plan_shifts").select("id", { count: "exact", head: true }),
       ]);
       return {
         employees: emp.count ?? 0,
@@ -1623,12 +1623,12 @@ git commit -m "feat(ui): app shell + router + protected dashboard with live coun
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../lib/database.types";
 
-export type Employee = Database["public"]["Tables"]["employees"]["Row"];
-export type EmployeeInsert = Database["public"]["Tables"]["employees"]["Insert"];
-export type EmployeeUpdate = Database["public"]["Tables"]["employees"]["Update"];
+export type Employee = Database["public"]["Tables"]["plan_employees"]["Row"];
+export type EmployeeInsert = Database["public"]["Tables"]["plan_employees"]["Insert"];
+export type EmployeeUpdate = Database["public"]["Tables"]["plan_employees"]["Update"];
 
 export async function listEmployees(onlyActive: boolean): Promise<Employee[]> {
-  let q = supabase.from("employees").select("*").order("display_code", { ascending: true });
+  let q = supabase.from("plan_employees").select("*").order("display_code", { ascending: true });
   if (onlyActive) q = q.eq("active", true);
   const { data, error } = await q;
   if (error) throw error;
@@ -1636,19 +1636,19 @@ export async function listEmployees(onlyActive: boolean): Promise<Employee[]> {
 }
 
 export async function createEmployee(payload: EmployeeInsert): Promise<Employee> {
-  const { data, error } = await supabase.from("employees").insert(payload).select().single();
+  const { data, error } = await supabase.from("plan_employees").insert(payload).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function updateEmployee(id: string, payload: EmployeeUpdate): Promise<Employee> {
-  const { data, error } = await supabase.from("employees").update(payload).eq("id", id).select().single();
+  const { data, error } = await supabase.from("plan_employees").update(payload).eq("id", id).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function toggleEmployeeActive(id: string, active: boolean): Promise<void> {
-  const { error } = await supabase.from("employees").update({ active }).eq("id", id);
+  const { error } = await supabase.from("plan_employees").update({ active }).eq("id", id);
   if (error) throw error;
 }
 ```
@@ -1851,30 +1851,30 @@ git commit -m "feat(employees): list/create/edit/toggle-active with Supabase"
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../lib/database.types";
 
-export type Absence = Database["public"]["Tables"]["absences"]["Row"];
-export type AbsenceInsert = Database["public"]["Tables"]["absences"]["Insert"];
+export type Absence = Database["public"]["Tables"]["plan_absences"]["Row"];
+export type AbsenceInsert = Database["public"]["Tables"]["plan_absences"]["Insert"];
 
 export type AbsenceWithEmployee = Absence & {
-  employees: { display_code: string; first_name: string; last_name: string } | null;
+  plan_employees: { display_code: string; first_name: string; last_name: string } | null;
 };
 
 export async function listAbsences(): Promise<AbsenceWithEmployee[]> {
   const { data, error } = await supabase
-    .from("absences")
-    .select("*, employees(display_code, first_name, last_name)")
+    .from("plan_absences")
+    .select("*, plan_employees(display_code, first_name, last_name)")
     .order("start_date", { ascending: false });
   if (error) throw error;
   return data as AbsenceWithEmployee[];
 }
 
 export async function createAbsence(payload: AbsenceInsert): Promise<Absence> {
-  const { data, error } = await supabase.from("absences").insert(payload).select().single();
+  const { data, error } = await supabase.from("plan_absences").insert(payload).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function deleteAbsence(id: string): Promise<void> {
-  const { error } = await supabase.from("absences").delete().eq("id", id);
+  const { error } = await supabase.from("plan_absences").delete().eq("id", id);
   if (error) throw error;
 }
 ```
@@ -1935,7 +1935,7 @@ export function AbsencesPage() {
         <tbody>
           {absences.data?.map((a) => (
             <tr key={a.id}>
-              <td>{a.employees?.display_code} {a.employees?.first_name} {a.employees?.last_name}</td>
+              <td>{a.plan_employees?.display_code} {a.plan_employees?.first_name} {a.plan_employees?.last_name}</td>
               <td>{a.start_date}</td>
               <td>{a.end_date}</td>
               <td>{a.type}</td>
@@ -1978,7 +1978,7 @@ export function AbsencesPage() {
 
 - [ ] **Step 3: Translations already present**
 
-The `absences` namespace for all 4 languages was already added in Task 10 Step 2 when writing the consolidated `translations.ts`. Verify it's there with:
+The `plan_absences` namespace for all 4 languages was already added in Task 10 Step 2 when writing the consolidated `translations.ts`. Verify it's there with:
 ```bash
 grep -A 8 "absences:" frontend/src/i18n/translations.ts
 ```
@@ -2074,11 +2074,11 @@ Expected: all pass.
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../lib/database.types";
 
-export type Shift = Database["public"]["Tables"]["shifts"]["Row"];
-export type ShiftInsert = Database["public"]["Tables"]["shifts"]["Insert"];
+export type Shift = Database["public"]["Tables"]["plan_shifts"]["Row"];
+export type ShiftInsert = Database["public"]["Tables"]["plan_shifts"]["Insert"];
 
 export type ShiftWithEmployee = Shift & {
-  employees: { display_code: string } | null;
+  plan_employees: { display_code: string } | null;
 };
 
 export async function listShiftsForMonth(year: number, month0: number): Promise<ShiftWithEmployee[]> {
@@ -2086,8 +2086,8 @@ export async function listShiftsForMonth(year: number, month0: number): Promise<
   const last = new Date(Date.UTC(year, month0 + 1, 0)).toISOString().slice(0, 10);
 
   const { data, error } = await supabase
-    .from("shifts")
-    .select("*, employees(display_code)")
+    .from("plan_shifts")
+    .select("*, plan_employees(display_code)")
     .gte("shift_date", first)
     .lte("shift_date", last)
     .order("shift_date");
@@ -2096,13 +2096,13 @@ export async function listShiftsForMonth(year: number, month0: number): Promise<
 }
 
 export async function createShift(payload: ShiftInsert): Promise<Shift> {
-  const { data, error } = await supabase.from("shifts").insert(payload).select().single();
+  const { data, error } = await supabase.from("plan_shifts").insert(payload).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function deleteShift(id: string): Promise<void> {
-  const { error } = await supabase.from("shifts").delete().eq("id", id);
+  const { error } = await supabase.from("plan_shifts").delete().eq("id", id);
   if (error) throw error;
 }
 ```
@@ -2153,7 +2153,7 @@ export function ShiftEditorModal({ date, existing, onClose }: Props) {
       <ul>
         {existing.map((s) => (
           <li key={s.id}>
-            {s.employees?.display_code} — {s.shift_type}
+            {s.plan_employees?.display_code} — {s.shift_type}
             {s.note && ` (${s.note})`}
             <button onClick={() => del.mutate(s.id)}>✕</button>
           </li>
@@ -2246,7 +2246,7 @@ export function ShiftsPage() {
               <div className="calendar-day-num">{Number(iso.slice(8, 10))}</div>
               <ul>
                 {dayShifts.map((s) => (
-                  <li key={s.id}>{s.employees?.display_code}{s.shift_type !== "FULL_DAY" ? ` (${s.shift_type[0]})` : ""}</li>
+                  <li key={s.id}>{s.plan_employees?.display_code}{s.shift_type !== "FULL_DAY" ? ` (${s.shift_type[0]})` : ""}</li>
                 ))}
               </ul>
             </button>
@@ -2399,7 +2399,7 @@ Opens http://localhost:5173. Log in with the admin user from step 4.
 
 ```bash
 # From Cloud SQL Editor:
-truncate table training_participants, training_courses, weekly_patterns, absences, shifts, employees restart identity cascade;
+truncate table plan_training_participants, plan_training_courses, plan_weekly_patterns, plan_absences, plan_shifts, plan_employees restart identity cascade;
 
 # Then re-apply seed:
 psql "$CLOUD_DB_URL" -f supabase/seed.sql
@@ -2513,11 +2513,11 @@ git add -A && git commit -m "chore: phase 1 MVP complete"
 ## Out-of-scope reminders (for next plan)
 
 When ready, create separate plans for each of:
-1. **Weekly-pattern UI editor** — read/write `weekly_patterns` with a 7-day×3-slot matrix per employee.
-2. **Training courses UI** — CRUD `training_courses` + `training_participants`; auto-create linked `absences` with `type=TRAINING`.
-3. **Daily notes + meetings** — CRUD `daily_notes` + `daily_note_participants`.
-4. **Coverage rules + evaluator** — CRUD `coverage_rules`; dashboard widget "uncovered shifts next 7 days".
-5. **Auto-schedule generator** — from `weekly_patterns` + `absences` → pre-fill `shifts` for a date range.
+1. **Weekly-pattern UI editor** — read/write `plan_weekly_patterns` with a 7-day×3-slot matrix per employee.
+2. **Training courses UI** — CRUD `plan_training_courses` + `plan_training_participants`; auto-create linked `plan_absences` with `type=TRAINING`.
+3. **Daily notes + meetings** — CRUD `plan_daily_notes` + `plan_daily_note_participants`.
+4. **Coverage rules + evaluator** — CRUD `plan_coverage_rules`; dashboard widget "uncovered shifts next 7 days".
+5. **Auto-schedule generator** — from `plan_weekly_patterns` + `plan_absences` → pre-fill `plan_shifts` for a date range.
 6. **Role-based access + RLS** — introduce `profiles` table, `app_role` enum (OWNER/MANAGER/STAFF/APPRENTICE), RLS policies matching `docs/requisiti_muhen.md §10.6`.
 7. **Excel importer** — ingest `01 02 05 ERF-01 Arbeitsplan TPZ 2026.xlsx` + `Übersicht Kurse Team 2026.xlsx`.
 8. **Vercel deployment** — point frontend at Supabase Cloud.
