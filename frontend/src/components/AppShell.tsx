@@ -1,35 +1,63 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
-import { useT } from "../i18n/translations";
+import { LANG_FLAGS, LANG_NAMES, nextLang } from "../i18n/translations";
+import { useT } from "../i18n/useT";
+
+const navRoutes = [
+  { to: "/", key: "dashboard" as const },
+  { to: "/rules", key: "rules" as const },
+  { to: "/employees", key: "employees" as const },
+  { to: "/availability", key: "availability" as const },
+  { to: "/absences", key: "absences" as const },
+  { to: "/schedule", key: "schedule" as const },
+];
 
 export function AppShell() {
-  const { user, signOut } = useAuth();
   const { lang, setLang } = useLanguage();
+  const { session, signOut } = useAuth();
   const nav = useT("nav");
 
   return (
-    <div className="shell">
+    <div className="layout">
       <aside className="sidebar">
-        <h1 className="brand">Pharma Plan Pro</h1>
-        <nav>
-          <NavLink to="/" end className="nav-link">{nav.dashboard}</NavLink>
-          <NavLink to="/employees" className="nav-link">{nav.employees}</NavLink>
-          <NavLink to="/shifts" className="nav-link">{nav.shifts}</NavLink>
-          <NavLink to="/absences" className="nav-link">{nav.absences}</NavLink>
+        <div className="brand">
+          <span className="brand-mark">PP</span>
+          <div>
+            <h1>Pharma Plan</h1>
+            <p>TPZ Muhen</p>
+          </div>
+        </div>
+        <nav className="nav">
+          {navRoutes.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === "/"}
+              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+            >
+              {nav[item.key]}
+            </NavLink>
+          ))}
         </nav>
+        <div className="sidebar-footer">
+          {session?.user?.email ? (
+            <p className="user-info">{session.user.email}</p>
+          ) : null}
+          <button className="secondary" onClick={() => signOut()} style={{ width: "100%", marginBottom: "0.5rem" }}>
+            {nav.signOut}
+          </button>
+          <button
+            className="lang-switcher"
+            onClick={() => setLang(nextLang(lang))}
+            title={`Switch to ${LANG_NAMES[nextLang(lang)]}`}
+          >
+            <span>{LANG_FLAGS[lang]}</span>
+            <span>{LANG_NAMES[lang]}</span>
+          </button>
+        </div>
       </aside>
       <main className="content">
-        <header className="topbar">
-          <select value={lang} onChange={(e) => setLang(e.target.value as never)}>
-            <option value="de">DE</option>
-            <option value="it">IT</option>
-            <option value="fr">FR</option>
-            <option value="en">EN</option>
-          </select>
-          <span>{user?.email}</span>
-          <button onClick={signOut}>Sign out</button>
-        </header>
         <Outlet />
       </main>
     </div>

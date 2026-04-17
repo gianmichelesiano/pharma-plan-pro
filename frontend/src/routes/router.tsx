@@ -1,29 +1,30 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
+
 import { AppShell } from "../components/AppShell";
 import { ProtectedRoute } from "../components/ProtectedRoute";
+import { AbsencesPage } from "../pages/AbsencesPage";
+import { AvailabilityPage } from "../pages/AvailabilityPage";
+import { DashboardPage } from "../pages/DashboardPage";
+import { EmployeesPage } from "../pages/EmployeesPage";
 import { LoginPage } from "../pages/LoginPage";
 import { RegisterPage } from "../pages/RegisterPage";
-import { DashboardPage } from "../pages/DashboardPage";
-import { EmployeesPage } from "../features/employees/EmployeesPage";
-import { AbsencesPage } from "../features/absences/AbsencesPage";
-import { ShiftsPage } from "../features/shifts/ShiftsPage";
+import { RulesPage } from "../pages/RulesPage";
+import { SchedulePage } from "../pages/SchedulePage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
   {
-    element: <ProtectedRoute />,
+    path: "/",
+    element: <ProtectedRoute><AppShell /></ProtectedRoute>,
     children: [
-      {
-        path: "/",
-        element: <AppShell />,
-        children: [
-          { index: true, element: <DashboardPage /> },
-          { path: "employees", element: <EmployeesPage /> },
-          { path: "shifts", element: <ShiftsPage /> },
-          { path: "absences", element: <AbsencesPage /> },
-        ],
-      },
+      { index: true, element: <DashboardPage /> },
+      { path: "employees", element: <EmployeesPage /> },
+      { path: "availability", element: <AvailabilityPage /> },
+      { path: "absences", element: <AbsencesPage /> },
+      { path: "rules", element: <RulesPage /> },
+      { path: "schedule", element: <SchedulePage /> },
     ],
   },
+  { path: "*", element: <Navigate to="/" replace /> },
 ]);
