@@ -11,6 +11,7 @@ const navRoutes = [
   { to: "/availability", key: "availability" as const },
   { to: "/absences", key: "absences" as const },
   { to: "/schedule", key: "schedule" as const },
+  { to: "/training", key: "training" as const },
 ];
 
 export function AppShell() {
