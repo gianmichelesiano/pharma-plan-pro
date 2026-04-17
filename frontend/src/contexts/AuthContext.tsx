@@ -7,6 +7,7 @@ type AuthState = {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ needsEmailConfirm: boolean }>;
   signOut: () => Promise<void>;
 };
 
@@ -34,6 +35,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   }
 
+  async function signUp(email: string, password: string, fullName: string) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName } },
+    });
+    if (error) throw error;
+    return { needsEmailConfirm: !data.session };
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
   }
@@ -43,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: session?.user ?? null,
     loading,
     signIn,
+    signUp,
     signOut,
   };
 

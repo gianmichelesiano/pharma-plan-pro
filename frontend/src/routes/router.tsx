@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { LoginPage } from "../pages/LoginPage";
+import { RegisterPage } from "../pages/RegisterPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { EmployeesPage } from "../features/employees/EmployeesPage";
 import { AbsencesPage } from "../features/absences/AbsencesPage";
@@ -9,6 +10,7 @@ import { ShiftsPage } from "../features/shifts/ShiftsPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
+  { path: "/register", element: <RegisterPage /> },
   {
     element: <ProtectedRoute />,
     children: [
