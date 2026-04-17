@@ -10,6 +10,7 @@ import { LoginPage } from "../pages/LoginPage";
 import { RegisterPage } from "../pages/RegisterPage";
 import { RulesPage } from "../pages/RulesPage";
 import { SchedulePage } from "../pages/SchedulePage";
+import { TrainingPage } from "../pages/TrainingPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "absences", element: <AbsencesPage /> },
       { path: "rules", element: <RulesPage /> },
       { path: "schedule", element: <SchedulePage /> },
+      { path: "training", element: <TrainingPage /> },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },
