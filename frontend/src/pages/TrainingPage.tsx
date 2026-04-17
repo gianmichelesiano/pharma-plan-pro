@@ -1,4 +1,4 @@
-import React, { FormEvent, useState } from "react";
+import React, { FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
@@ -27,7 +27,8 @@ const EMPTY_FORM: CourseForm = {
   start_time: "", end_time: "", location: "", note: "",
 };
 
-function formatDate(value: string) {
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "—";
   const [year, month, day] = value.split("-");
   return `${day}.${month}.${year}`;
 }
@@ -35,7 +36,7 @@ function formatDate(value: string) {
 export function TrainingPage() {
   const queryClient = useQueryClient();
   const t = useT("training");
-  const c = useT("common");
+  const common = useT("common");
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -62,10 +63,11 @@ export function TrainingPage() {
 
   const courses = coursesQuery.data ?? [];
 
-  // auto-select first course
-  if (courses.length > 0 && selectedCourseId === null) {
-    setSelectedCourseId(courses[0].id);
-  }
+  useEffect(() => {
+    if (courses.length > 0 && selectedCourseId === null) {
+      setSelectedCourseId(courses[0].id);
+    }
+  }, [courses, selectedCourseId]);
 
   const selectedCourse = courses.find((course) => course.id === selectedCourseId) ?? null;
 
@@ -99,7 +101,7 @@ export function TrainingPage() {
   const availableEmployees = (employeesQuery.data ?? []).filter((e) => !participantIds.has(e.id));
 
   const saveCourseMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ courseId, mode }: { courseId: string | null; mode: "new" | "edit" }) => {
       const payload = {
         code: form.code,
         title: form.title,
@@ -110,14 +112,15 @@ export function TrainingPage() {
         location: form.location || null,
         note: form.note || null,
       };
-      if (modalMode === "new") {
+      if (mode === "new") {
         const { error } = await supabase.from("training_courses").insert(payload);
         if (error) throw error;
       } else {
+        if (!courseId) throw new Error("No course selected");
         const { error } = await supabase
           .from("training_courses")
           .update(payload)
-          .eq("id", selectedCourseId!);
+          .eq("id", courseId);
         if (error) throw error;
       }
     },
@@ -136,6 +139,8 @@ export function TrainingPage() {
     onSuccess: () => {
       setSelectedCourseId(null);
       queryClient.invalidateQueries({ queryKey: ["training_courses", selectedYear] });
+      queryClient.invalidateQueries({ queryKey: ["training_participants"] });
+      queryClient.invalidateQueries({ queryKey: ["absences"] });
     },
   });
 
@@ -209,7 +214,7 @@ export function TrainingPage() {
       <div className="card" style={{ marginBottom: "1rem" }}>
         <div className="toolbar">
           <label className="field">
-            <span>{c.year}</span>
+            <span>{common.year}</span>
             <select value={selectedYear} onChange={(e) => { setSelectedYear(Number(e.target.value)); setSelectedCourseId(null); }}>
               {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
@@ -263,10 +268,10 @@ export function TrainingPage() {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button type="button" className="secondary" onClick={openEdit}>{c.modify}</button>
+                  <button type="button" className="secondary" onClick={openEdit}>{common.modify}</button>
                   <button type="button" className="secondary" style={{ color: "var(--danger, #c04040)" }}
                     onClick={() => { if (window.confirm(t.confirmDelete)) deleteCourseMutation.mutate(selectedCourse.id); }}>
-                    {c.delete}
+                    {common.delete}
                   </button>
                 </div>
               </div>
@@ -274,7 +279,7 @@ export function TrainingPage() {
               <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted, #6f816f)", textTransform: "uppercase", marginBottom: "0.5rem" }}>
                 {t.participants}
               </div>
-              {participantsQuery.isLoading ? <p>{c.loading}</p> : null}
+              {participantsQuery.isLoading ? <p>{common.loading}</p> : null}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginBottom: "0.75rem" }}>
                 {(participantsQuery.data ?? []).length === 0 && !participantsQuery.isLoading
                   ? <span style={{ fontSize: "0.85rem", color: "var(--text-muted, #6f816f)" }}>{t.noParticipants}</span>
@@ -316,12 +321,12 @@ export function TrainingPage() {
           mode={modalMode}
           form={form}
           setForm={setForm}
-          onSave={(e) => { e.preventDefault(); saveCourseMutation.mutate(); }}
+          onSave={(e) => { e.preventDefault(); saveCourseMutation.mutate({ courseId: selectedCourseId, mode: modalMode }); }}
           onCancel={() => { setShowModal(false); setForm(EMPTY_FORM); }}
           saving={saveCourseMutation.isPending}
           error={saveCourseMutation.isError}
           t={t}
-          c={c}
+          common={common}
         />
       ) : null}
     </section>
@@ -337,10 +342,10 @@ type CourseModalProps = {
   saving: boolean;
   error: boolean;
   t: ReturnType<typeof useT<"training">>;
-  c: ReturnType<typeof useT<"common">>;
+  common: ReturnType<typeof useT<"common">>;
 };
 
-function CourseModal({ mode, form, setForm, onSave, onCancel, saving, error, t, c }: CourseModalProps) {
+function CourseModal({ mode, form, setForm, onSave, onCancel, saving, error, t, common }: CourseModalProps) {
   const field = (key: keyof CourseForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -383,7 +388,7 @@ function CourseModal({ mode, form, setForm, onSave, onCancel, saving, error, t, 
           </label>
           {error ? <p style={{ color: "red", fontSize: "0.8rem" }}>{t.errorSaving}</p> : null}
           <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-            <button type="button" className="secondary" onClick={onCancel}>{c.cancel}</button>
+            <button type="button" className="secondary" onClick={onCancel}>{common.cancel}</button>
             <button type="submit" disabled={saving}>{saving ? t.saving : t.saveCourse}</button>
           </div>
         </form>
