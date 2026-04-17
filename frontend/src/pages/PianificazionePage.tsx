@@ -326,6 +326,9 @@ export function PianificazionePage() {
         {clearMutation.isError && (
           <p className="schedule-error">{(clearMutation.error as Error).message}</p>
         )}
+        {toggleMutation.isError && (
+          <p className="schedule-error">{(toggleMutation.error as Error).message}</p>
+        )}
       </div>
       {isLoading ? (
         <p className="mini-muted">{common.loading}</p>
