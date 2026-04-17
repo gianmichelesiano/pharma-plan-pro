@@ -164,7 +164,7 @@ export function SchedulePage() {
                   if (!day) return <div key={`e-${wi}-${di}`} className="calendar-cell empty" />;
                   const dayDate = new Date(`${day}T12:00:00`);
                   const dayOfWeek = dayDate.getDay();
-                  const slotTypes: ShiftType[] = dayOfWeek === 0 ? [] : dayOfWeek === 6 ? ["FULL_DAY"] : ["MORNING", "AFTERNOON"];
+                  const slotTypes: ShiftType[] = dayOfWeek === 0 ? [] : dayOfWeek === 6 ? ["FULL_DAY"] : ["MORNING", "AFTERNOON", "FULL_DAY"];
                   return (
                     <div key={day} className="calendar-cell">
                       <div className="calendar-cell-head">
