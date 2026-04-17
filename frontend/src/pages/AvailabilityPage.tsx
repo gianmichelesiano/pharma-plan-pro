@@ -8,8 +8,13 @@ import type { Tables } from "../lib/database.types";
 type Employee = Tables<"employees">;
 type Pattern = Tables<"weekly_patterns">;
 
-const SLOTS = ["AM", "PM", "FULL"] as const;
-const SLOT_TIMES: Record<string, string> = { AM: "08:00-12:15", PM: "13:30-18:30", FULL: "08:00-15:00" };
+const WEEKDAY_SLOTS = ["MORNING", "AFTERNOON", "FULL_DAY"] as const;
+const SATURDAY_SLOTS = ["FULL_DAY", "SATURDAY_ROTATING"] as const;
+
+
+function slotsForWeekday(weekday: number): readonly string[] {
+  return weekday === 5 ? SATURDAY_SLOTS : WEEKDAY_SLOTS;
+}
 
 export function AvailabilityPage() {
   const queryClient = useQueryClient();
@@ -21,7 +26,11 @@ export function AvailabilityPage() {
   const employeesQuery = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("*").eq("active", true).order("last_name");
+      const { data, error } = await supabase
+        .from("employees")
+        .select("*")
+        .eq("active", true)
+        .order("last_name");
       if (error) throw error;
       return data as Employee[];
     },
@@ -50,7 +59,7 @@ export function AvailabilityPage() {
     if (!patternsQuery.data) return;
     const map: Record<string, boolean> = {};
     for (let weekday = 0; weekday < 6; weekday++) {
-      for (const slot of SLOTS) {
+      for (const slot of slotsForWeekday(weekday)) {
         map[`${weekday}-${slot}`] = false;
       }
     }
@@ -99,11 +108,17 @@ export function AvailabilityPage() {
               disabled={employeesQuery.isLoading}
             >
               {(employeesQuery.data ?? []).map((emp) => (
-                <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
+                <option key={emp.id} value={emp.id}>
+                  {emp.first_name} {emp.last_name}
+                </option>
               ))}
             </select>
           </label>
-          <button type="button" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || patternsQuery.isLoading}>
+          <button
+            type="button"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || patternsQuery.isLoading}
+          >
             {saveMutation.isPending ? t.saving : t.saveAvailability}
           </button>
         </div>
@@ -115,27 +130,40 @@ export function AvailabilityPage() {
           <thead>
             <tr>
               <th>{t.dayHeader}</th>
-              {SLOTS.map((s) => <th key={s}>{s} <small style={{ color: "#6f816f", fontWeight: 400 }}>{SLOT_TIMES[s]}</small></th>)}
+              <th>MORNING <small style={{ color: "#6f816f", fontWeight: 400 }}>08:00–12:15</small></th>
+              <th>AFTERNOON <small style={{ color: "#6f816f", fontWeight: 400 }}>13:30–18:30</small></th>
+              <th>FULL_DAY <small style={{ color: "#6f816f", fontWeight: 400 }}>08:00–18:30</small></th>
+              <th>SAT ROTATING</th>
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: 6 }, (_, weekday) => (
-              <tr key={weekday}>
-                <td>{c.weekdays[weekday]}</td>
-                {SLOTS.map((slot) => (
-                  <td key={slot}>
-                    <label className="availability-toggle">
-                      <input
-                        type="checkbox"
-                        checked={draft[`${weekday}-${slot}`] ?? false}
-                        onChange={() => toggleSlot(weekday, slot)}
-                      />
-                      <span>{draft[`${weekday}-${slot}`] ? c.active : c.inactive}</span>
-                    </label>
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {Array.from({ length: 6 }, (_, weekday) => {
+              const slots = slotsForWeekday(weekday);
+              const allCols = ["MORNING", "AFTERNOON", "FULL_DAY", "SATURDAY_ROTATING"];
+              return (
+                <tr key={weekday}>
+                  <td>{c.weekdays[weekday]}</td>
+                  {allCols.map((slot) => {
+                    const key = `${weekday}-${slot}`;
+                    const applicable = slots.includes(slot);
+                    return (
+                      <td key={slot} style={!applicable ? { background: "var(--surface-2, #f4f4f4)" } : undefined}>
+                        {applicable ? (
+                          <label className="availability-toggle">
+                            <input
+                              type="checkbox"
+                              checked={draft[key] ?? false}
+                              onChange={() => toggleSlot(weekday, slot)}
+                            />
+                            <span>{draft[key] ? c.active : c.inactive}</span>
+                          </label>
+                        ) : null}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

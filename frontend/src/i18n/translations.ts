@@ -49,6 +49,7 @@ const translations = {
       absences: "Assenze",
       schedule: "Pianificazione",
       training: "Formazione",
+      piano: "Piano mensile",
       signOut: "Esci",
     },
     dashboard: {
@@ -186,6 +187,14 @@ const translations = {
       errorDeleting: "Errore nell'eliminazione.",
       coursesCount: "corsi",
     },
+    piano: {
+      title: "Piano mensile",
+      description: "Generazione automatica del piano mensile dei turni basata su regole, disponibilità e assenze.",
+      generate: "Genera piano",
+      generating: "Generazione in corso...",
+      clear: "Cancella piano",
+      confirmClear: "Cancellare il piano del mese selezionato? I turni manuali verranno eliminati.",
+    },
   },
   de: {
     common: {
@@ -237,6 +246,7 @@ const translations = {
       absences: "Abwesenheiten",
       schedule: "Planung",
       training: "Schulungen",
+      piano: "Monatsplan",
       signOut: "Abmelden",
     },
     dashboard: {
@@ -374,6 +384,14 @@ const translations = {
       errorDeleting: "Fehler beim Löschen.",
       coursesCount: "Schulungen",
     },
+    piano: {
+      title: "Monatsplan",
+      description: "Automatische Generierung des monatlichen Schichtplans basierend auf Regeln, Verfügbarkeit und Abwesenheiten.",
+      generate: "Plan generieren",
+      generating: "Generierung läuft...",
+      clear: "Plan löschen",
+      confirmClear: "Den Plan für den ausgewählten Monat löschen? Manuelle Schichten werden entfernt.",
+    },
   },
   fr: {
     common: {
@@ -425,6 +443,7 @@ const translations = {
       absences: "Absences",
       schedule: "Planification",
       training: "Formation",
+      piano: "Plan mensuel",
       signOut: "Se déconnecter",
     },
     dashboard: {
@@ -562,6 +581,14 @@ const translations = {
       errorDeleting: "Erreur de suppression.",
       coursesCount: "formations",
     },
+    piano: {
+      title: "Plan mensuel",
+      description: "Génération automatique du plan mensuel des postes basée sur les règles, la disponibilité et les absences.",
+      generate: "Générer le plan",
+      generating: "Génération en cours...",
+      clear: "Effacer le plan",
+      confirmClear: "Effacer le plan du mois sélectionné ? Les postes manuels seront supprimés.",
+    },
   },
   en: {
     common: {
@@ -613,6 +640,7 @@ const translations = {
       absences: "Absences",
       schedule: "Scheduling",
       training: "Training",
+      piano: "Monthly Plan",
       signOut: "Sign out",
     },
     dashboard: {
@@ -749,6 +777,14 @@ const translations = {
       errorSaving: "Error saving.",
       errorDeleting: "Error deleting.",
       coursesCount: "courses",
+    },
+    piano: {
+      title: "Monthly Plan",
+      description: "Automatic generation of the monthly shift plan based on rules, availability, and absences.",
+      generate: "Generate plan",
+      generating: "Generating...",
+      clear: "Clear plan",
+      confirmClear: "Clear the plan for the selected month? Manual shifts will be removed.",
     },
   },
 } as const;
