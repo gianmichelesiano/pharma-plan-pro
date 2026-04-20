@@ -60,7 +60,7 @@ export function SchedulePage() {
   const employeesQuery = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("*").eq("active", true).order("last_name");
+      const { data, error } = await supabase.from("employees").select("*").eq("active", true).order("first_name");
       if (error) throw error;
       return data as Employee[];
     },
@@ -172,7 +172,7 @@ export function SchedulePage() {
   const isBusy = createMutation.isPending || deleteMutation.isPending;
 
   const activeEmployees = useMemo(
-    () => [...(employeesQuery.data ?? [])].sort((a, b) => a.last_name.localeCompare(b.last_name)),
+    () => [...(employeesQuery.data ?? [])].sort((a, b) => a.first_name.localeCompare(b.first_name)),
     [employeesQuery.data],
   );
   const roleLabels = c as unknown as Record<string, string>;

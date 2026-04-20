@@ -38,7 +38,7 @@ export function EmployeesPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("*").order("last_name");
+      const { data, error } = await supabase.from("employees").select("*").order("first_name");
       if (error) throw error;
       return data as Employee[];
     },
@@ -90,7 +90,7 @@ export function EmployeesPage() {
   };
 
   const filteredEmployees = useMemo(() => {
-    const items = [...(data ?? [])].sort((a, b) => a.last_name.localeCompare(b.last_name));
+    const items = [...(data ?? [])].sort((a, b) => a.first_name.localeCompare(b.first_name));
     return filter === "active" ? items.filter((e) => e.active) : items;
   }, [data, filter]);
 

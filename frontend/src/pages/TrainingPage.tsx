@@ -104,7 +104,7 @@ export function TrainingPage() {
         .from("employees")
         .select("id, first_name, last_name, role")
         .eq("active", true)
-        .order("last_name");
+        .order("first_name");
       if (error) throw error;
       return data as Employee[];
     },

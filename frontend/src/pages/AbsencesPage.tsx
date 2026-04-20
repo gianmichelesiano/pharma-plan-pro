@@ -36,7 +36,7 @@ export function AbsencesPage() {
   const employeesQuery = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("id, first_name, last_name, role").order("last_name");
+      const { data, error } = await supabase.from("employees").select("id, first_name, last_name, role").order("first_name");
       if (error) throw error;
       return data as Employee[];
     },

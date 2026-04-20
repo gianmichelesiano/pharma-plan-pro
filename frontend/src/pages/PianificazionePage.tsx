@@ -100,7 +100,7 @@ export function PianificazionePage() {
   const employeesQuery = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("*").eq("active", true).order("last_name");
+      const { data, error } = await supabase.from("employees").select("*").eq("active", true).order("first_name");
       if (error) throw error;
       return data as Employee[];
     },
