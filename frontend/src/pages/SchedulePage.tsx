@@ -86,7 +86,7 @@ export function SchedulePage() {
       const { error } = await supabase.from("shifts").insert({ employee_id: employeeId, shift_date: date });
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["shifts"] }); setActionError(null); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["shifts"] }); queryClient.invalidateQueries({ queryKey: ["coverage_issues"] }); setActionError(null); },
     onError: (e) => setActionError(e.message),
   });
 
@@ -95,7 +95,7 @@ export function SchedulePage() {
       const { error } = await supabase.from("shifts").delete().eq("id", shiftId);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["shifts"] }); setActionError(null); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["shifts"] }); queryClient.invalidateQueries({ queryKey: ["coverage_issues"] }); setActionError(null); },
     onError: (e) => setActionError(e.message),
   });
 
