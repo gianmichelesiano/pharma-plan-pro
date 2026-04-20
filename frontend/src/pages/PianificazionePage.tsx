@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { CoverageBadges, hasCritical } from "../components/CoverageBadges";
 import { useT } from "../i18n/useT";
+import { useLanguage } from "../contexts/LanguageContext";
 import { supabase } from "../lib/supabase";
 import { useCoverageIssues, issuesByDate } from "../lib/coverage";
 import type { Tables } from "../lib/database.types";
@@ -27,10 +28,11 @@ function daysInRange(start: string, end: string): string[] {
   return out;
 }
 
-function formatDateLabel(dateStr: string): string {
+function formatDateLabel(dateStr: string, lang: string): string {
   const [y, mo, da] = dateStr.split("-").map(Number);
   const date = new Date(Date.UTC(y, mo - 1, da));
-  const label = new Intl.DateTimeFormat("it-IT", {
+  const locale = { it: "it-IT", en: "en-GB", de: "de-DE", fr: "fr-FR" }[lang] ?? "en-GB";
+  const label = new Intl.DateTimeFormat(locale, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -48,6 +50,7 @@ function isWeekend(dateStr: string): boolean {
 
 export function PianificazionePage() {
   const t = useT("planning");
+  const { lang } = useLanguage();
   const queryClient = useQueryClient();
   const now = new Date();
   const [year, setYear] = useState(now.getUTCFullYear());
@@ -195,7 +198,7 @@ export function PianificazionePage() {
                 return (
                   <tr key={day} className={weekend ? "weekend-row" : undefined}>
                     <td className={`date-cell${critical ? " day-has-critical" : ""}`}>
-                      {formatDateLabel(day)}
+                      {formatDateLabel(day, lang)}
                       {dayIssues.length > 0 && (
                         <span style={{ marginLeft: "0.5rem" }}>
                           <CoverageBadges issues={dayIssues} />
