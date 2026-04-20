@@ -29,99 +29,95 @@ insert into employees (display_code, first_name, last_name, email, role, employm
 -- ============================================================
 -- SEED 2/3 — Weekly patterns (§3)
 -- weekday: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+-- One row per (employee, weekday) they normally work.
+-- Saturday-rotating employees are NOT seeded here; rotation is
+-- handled at scheduling time by the planning engine.
 -- ============================================================
 with emp as (select id, display_code from employees)
-insert into weekly_patterns (employee_id, weekday, slot)
-select e.id, wp.weekday, wp.slot
+insert into weekly_patterns (employee_id, weekday, active)
+select e.id, wp.weekday, true
 from emp e
 join (values
-  -- KR: Lu-Ma-Gio-Ve + sabato rotante
-  ('KR', 0, 'FULL_DAY'),
-  ('KR', 1, 'FULL_DAY'),
-  ('KR', 3, 'FULL_DAY'),
-  ('KR', 4, 'FULL_DAY'),
-  ('KR', 5, 'SATURDAY_ROTATING'),
-  -- UE: Ma-Me (+ occ sabato)
-  ('UE', 1, 'FULL_DAY'),
-  ('UE', 2, 'FULL_DAY'),
-  ('UE', 5, 'SATURDAY_ROTATING'),
+  -- KR: Lu-Ma-Gio-Ve (sabato rotante gestito dal motore)
+  ('KR', 0),
+  ('KR', 1),
+  ('KR', 3),
+  ('KR', 4),
+  -- UE: Ma-Me (sabato rotante gestito dal motore)
+  ('UE', 1),
+  ('UE', 2),
   -- CR: Ma-Me-Ve
-  ('CR', 1, 'FULL_DAY'),
-  ('CR', 2, 'FULL_DAY'),
-  ('CR', 4, 'FULL_DAY'),
-  -- IA: Lunedì + sabato rotante
-  ('IA', 0, 'FULL_DAY'),
-  ('IA', 5, 'SATURDAY_ROTATING'),
+  ('CR', 1),
+  ('CR', 2),
+  ('CR', 4),
+  -- IA: Lunedì (sabato rotante gestito dal motore)
+  ('IA', 0),
   -- ML: Lu-Me-Gio-Ve
-  ('ML', 0, 'FULL_DAY'),
-  ('ML', 2, 'FULL_DAY'),
-  ('ML', 3, 'FULL_DAY'),
-  ('ML', 4, 'FULL_DAY'),
-  -- FF: Ma-Gio (+ occ sabato)
-  ('FF', 1, 'FULL_DAY'),
-  ('FF', 3, 'FULL_DAY'),
-  ('FF', 5, 'SATURDAY_ROTATING'),
+  ('ML', 0),
+  ('ML', 2),
+  ('ML', 3),
+  ('ML', 4),
+  -- FF: Ma-Gio (sabato rotante gestito dal motore)
+  ('FF', 1),
+  ('FF', 3),
   -- ID: Lu-Gio-Ve
-  ('ID', 0, 'FULL_DAY'),
-  ('ID', 3, 'FULL_DAY'),
-  ('ID', 4, 'FULL_DAY'),
+  ('ID', 0),
+  ('ID', 3),
+  ('ID', 4),
   -- LO: solo sabato
-  ('LO', 5, 'FULL_DAY'),
+  ('LO', 5),
   -- MW: quasi full-time (Gen-Mar)
-  ('MW', 0, 'FULL_DAY'),
-  ('MW', 1, 'FULL_DAY'),
-  ('MW', 2, 'FULL_DAY'),
-  ('MW', 3, 'FULL_DAY'),
-  ('MW', 4, 'FULL_DAY'),
-  ('MW', 5, 'FULL_DAY'),
+  ('MW', 0),
+  ('MW', 1),
+  ('MW', 2),
+  ('MW', 3),
+  ('MW', 4),
+  ('MW', 5),
   -- RS: Ma-Me-Ve-Sab
-  ('RS', 1, 'FULL_DAY'),
-  ('RS', 2, 'FULL_DAY'),
-  ('RS', 4, 'FULL_DAY'),
-  ('RS', 5, 'FULL_DAY'),
-  -- SB: Ma-Me-Ve (mezze giornate)
-  ('SB', 1, 'MORNING'),
-  ('SB', 2, 'MORNING'),
-  ('SB', 4, 'MORNING'),
-  -- SI: Gio-Ve (+ sabato) — Gen/Feb only
-  ('SI', 3, 'FULL_DAY'),
-  ('SI', 4, 'FULL_DAY'),
-  ('SI', 5, 'SATURDAY_ROTATING'),
+  ('RS', 1),
+  ('RS', 2),
+  ('RS', 4),
+  ('RS', 5),
+  -- SB: Ma-Me-Ve (orari parziali gestiti fuori dal pattern)
+  ('SB', 1),
+  ('SB', 2),
+  ('SB', 4),
+  -- SI: Gio-Ve (Gen/Feb only, sabato rotante gestito dal motore)
+  ('SI', 3),
+  ('SI', 4),
   -- TG: Mer + Sab
-  ('TG', 2, 'FULL_DAY'),
-  ('TG', 5, 'FULL_DAY'),
+  ('TG', 2),
+  ('TG', 5),
   -- JH: Lu-Ve
-  ('JH', 0, 'FULL_DAY'),
-  ('JH', 1, 'FULL_DAY'),
-  ('JH', 2, 'FULL_DAY'),
-  ('JH', 3, 'FULL_DAY'),
-  ('JH', 4, 'FULL_DAY'),
-  -- MH: Lu-Ma-Gio + sabato rotante (Mer/Ven scuola)
-  ('MH', 0, 'FULL_DAY'),
-  ('MH', 1, 'FULL_DAY'),
-  ('MH', 3, 'FULL_DAY'),
-  ('MH', 5, 'SATURDAY_ROTATING'),
-  -- LT: Lu-Gio + sabato rotante
-  ('LT', 0, 'FULL_DAY'),
-  ('LT', 3, 'FULL_DAY'),
-  ('LT', 5, 'SATURDAY_ROTATING'),
+  ('JH', 0),
+  ('JH', 1),
+  ('JH', 2),
+  ('JH', 3),
+  ('JH', 4),
+  -- MH: Lu-Ma-Gio (Mer/Ven scuola; sabato rotante gestito dal motore)
+  ('MH', 0),
+  ('MH', 1),
+  ('MH', 3),
+  -- LT: Lu-Gio (sabato rotante gestito dal motore)
+  ('LT', 0),
+  ('LT', 3),
   -- LM: solo sabato
-  ('LM', 5, 'FULL_DAY'),
+  ('LM', 5),
   -- LH: full settimana (da Apr)
-  ('LH', 0, 'FULL_DAY'),
-  ('LH', 1, 'FULL_DAY'),
-  ('LH', 2, 'FULL_DAY'),
-  ('LH', 3, 'FULL_DAY'),
-  ('LH', 4, 'FULL_DAY'),
-  ('LH', 5, 'FULL_DAY'),
+  ('LH', 0),
+  ('LH', 1),
+  ('LH', 2),
+  ('LH', 3),
+  ('LH', 4),
+  ('LH', 5),
   -- JF: full settimana (da Mag)
-  ('JF', 0, 'FULL_DAY'),
-  ('JF', 1, 'FULL_DAY'),
-  ('JF', 2, 'FULL_DAY'),
-  ('JF', 3, 'FULL_DAY'),
-  ('JF', 4, 'FULL_DAY'),
-  ('JF', 5, 'FULL_DAY')
-) as wp(code, weekday, slot) on wp.code = e.display_code;
+  ('JF', 0),
+  ('JF', 1),
+  ('JF', 2),
+  ('JF', 3),
+  ('JF', 4),
+  ('JF', 5)
+) as wp(code, weekday) on wp.code = e.display_code;
 
 -- ============================================================
 -- SEED 3/3 — Training courses + participants (§9)
@@ -172,3 +168,35 @@ from (values
 ) as link(course_code, emp_code)
 join c on c.code = link.course_code
 join e on e.display_code = link.emp_code;
+
+-- ============================================================
+-- SEED 4/4 — Coverage rules (HARD minimums from docs/info_extract.md)
+-- weekday: 0=Mon … 5=Sat
+-- time_window: 'all_day' | 'evening' (evening = after 17:45)
+-- Source: MIN_COVERAGE derived from H1-2026 actuals.
+-- ⚠️  Verify with Katja: minima observed may include emergency days.
+-- ============================================================
+insert into coverage_rules (weekday, role, min_required, time_window, note) values
+  -- Monday
+  (0, 'pharmacist',    2, 'all_day', 'LUN min farmacisti'),
+  (0, 'pha',           1, 'all_day', 'LUN min PhA'),
+  (0, 'pha',           2, 'evening', 'LUN serale ≥2 PhA dopo 17:45'),
+  -- Tuesday
+  (1, 'pharmacist',    2, 'all_day', 'MAR min farmacisti'),
+  (1, 'pha',           1, 'all_day', 'MAR min PhA'),
+  (1, 'pha',           3, 'evening', 'MAR serale ≥3 PhA dopo 17:45'),
+  -- Wednesday — serale più stringente (apertura serale)
+  (2, 'pharmacist',    2, 'all_day', 'MER min farmacisti'),
+  (2, 'pha',           2, 'all_day', 'MER min PhA'),
+  (2, 'pha',           2, 'evening', 'MER serale ≥2 PhA dopo 17:45'),
+  -- Thursday
+  (3, 'pharmacist',    2, 'all_day', 'GIO min farmacisti'),
+  (3, 'pha',           1, 'all_day', 'GIO min PhA'),
+  (3, 'pha',           3, 'evening', 'GIO serale ≥3 PhA dopo 17:45'),
+  -- Friday
+  (4, 'pharmacist',    2, 'all_day', 'VEN min farmacisti'),
+  (4, 'pha',           2, 'all_day', 'VEN min PhA'),
+  (4, 'pha',           3, 'evening', 'VEN serale ≥3 PhA dopo 17:45'),
+  -- Saturday — no evening (farmacia chiude 16-17h)
+  (5, 'pharmacist',    1, 'all_day', 'SAB min farmacista responsabile'),
+  (5, 'auxiliary',     1, 'all_day', 'SAB min ausiliaria (LO/LM)');
