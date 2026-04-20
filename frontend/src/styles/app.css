@@ -397,9 +397,9 @@ input {
 }
 
 .calendar-person.pharmacist {
-  background: #dceef8;
-  color: #124766;
-  border-color: rgba(18, 71, 102, 0.12);
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
 }
 
 .calendar-person.operator {
