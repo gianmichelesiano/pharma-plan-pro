@@ -282,7 +282,6 @@ export function SchedulePage() {
                             key={shift.id}
                             className={[
                               "calendar-person",
-                              "shift-cell",
                               shift.employee?.role === "pharmacist" ? "pharmacist" : "operator",
                               shift.source === "generated" ? "is-generated" : "",
                               conflictSet.has(`${shift.shift_date}|${shift.employee_id}`) ? "is-conflict" : "",
