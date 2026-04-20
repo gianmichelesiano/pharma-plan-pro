@@ -39,7 +39,7 @@ export function issuesByDate(issues: CoverageIssue[]): Map<string, CoverageIssue
 export function roleLabel(role: string | null): string {
   switch (role) {
     case "pharmacist": return "farm";
-    case "pha": return "pha";
+    case "pha": return "op";
     case "apprentice_pha": return "app";
     case "driver": return "drv";
     case "auxiliary": return "aux";
