@@ -198,6 +198,7 @@ export type Database = {
           id: string
           last_name: string
           left_at: string | null
+          phone: string | null
           role: Database["public"]["Enums"]["employee_role"]
           updated_at: string
           weekly_hours_pct: number | null
@@ -213,6 +214,7 @@ export type Database = {
           id?: string
           last_name: string
           left_at?: string | null
+          phone?: string | null
           role: Database["public"]["Enums"]["employee_role"]
           updated_at?: string
           weekly_hours_pct?: number | null
@@ -228,6 +230,7 @@ export type Database = {
           id?: string
           last_name?: string
           left_at?: string | null
+          phone?: string | null
           role?: Database["public"]["Enums"]["employee_role"]
           updated_at?: string
           weekly_hours_pct?: number | null

@@ -12,6 +12,7 @@ import { RulesPage } from "../pages/RulesPage";
 import { SchedulePage } from "../pages/SchedulePage";
 import { TrainingPage } from "../pages/TrainingPage";
 import { PianificazionePage } from "../pages/PianificazionePage";
+import { EmailTestPage } from "../pages/EmailTestPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: "schedule", element: <SchedulePage /> },
       { path: "training", element: <TrainingPage /> },
       { path: "piano", element: <PianificazionePage /> },
+      { path: "email-test", element: <EmailTestPage /> },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },

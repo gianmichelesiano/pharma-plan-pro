@@ -16,3 +16,10 @@ supabase/.branches
 supabase/.temp
 supabase/logs
 z_notes.txt
+
+# Local dev artifacts
+.superpowers/
+farmacia-plan/
+test_smtp.py
+task_email.md
+z_notes.txt
