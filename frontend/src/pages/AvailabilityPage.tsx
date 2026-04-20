@@ -21,7 +21,7 @@ export function AvailabilityPage() {
         .from("employees")
         .select("*")
         .eq("active", true)
-        .order("last_name");
+        .order("first_name");
       if (error) throw error;
       return data as Employee[];
     },
