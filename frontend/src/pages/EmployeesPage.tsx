@@ -11,6 +11,8 @@ type EmployeeForm = {
   first_name: string;
   last_name: string;
   display_code: string;
+  email: string;
+  phone: string;
   role: Employee["role"];
   weekly_hours_pct: string;
   active: boolean;
@@ -20,6 +22,8 @@ const initialForm: EmployeeForm = {
   first_name: "",
   last_name: "",
   display_code: "",
+  email: "",
+  phone: "",
   role: "pha",
   weekly_hours_pct: "100",
   active: true,
@@ -68,6 +72,8 @@ export function EmployeesPage() {
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
       display_code: form.display_code.trim() || (form.first_name.slice(0, 2).toUpperCase() + form.last_name.slice(0, 2).toUpperCase()),
+      email: form.email.trim() || null,
+      phone: form.phone.trim() || null,
       role: form.role,
       weekly_hours_pct: Number(form.weekly_hours_pct),
       active: form.active,
@@ -83,6 +89,8 @@ export function EmployeesPage() {
       first_name: emp.first_name,
       last_name: emp.last_name,
       display_code: emp.display_code,
+      email: (emp as any).email ?? "",
+      phone: (emp as any).phone ?? "",
       role: emp.role,
       weekly_hours_pct: String(emp.weekly_hours_pct ?? 100),
       active: emp.active,
@@ -112,6 +120,14 @@ export function EmployeesPage() {
             <label className="field">
               <span>{t.displayCode}</span>
               <input value={form.display_code} onChange={(e) => setForm((f) => ({ ...f, display_code: e.target.value }))} placeholder="Es. MA-BI" />
+            </label>
+            <label className="field">
+              <span>Email</span>
+              <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+            </label>
+            <label className="field">
+              <span>Telefono</span>
+              <input type="tel" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
             </label>
             <label className="field">
               <span>{c.role}</span>
@@ -152,6 +168,8 @@ export function EmployeesPage() {
             <thead>
               <tr>
                 <th>{t.nameHeader}</th>
+                <th>Email</th>
+                <th>Tel</th>
                 <th>{t.roleHeader}</th>
                 <th>%</th>
                 <th>{t.statusHeader}</th>
@@ -162,6 +180,8 @@ export function EmployeesPage() {
               {filteredEmployees.map((emp) => (
                 <tr key={emp.id}>
                   <td>{emp.first_name} {emp.last_name} <small style={{ color: "#6f816f" }}>({emp.display_code})</small></td>
+                  <td>{(emp as any).email ?? "—"}</td>
+                  <td>{(emp as any).phone ?? "—"}</td>
                   <td>{(c as unknown as Record<string, string>)[`role_${emp.role}`] ?? emp.role}</td>
                   <td>{emp.weekly_hours_pct ?? "—"}</td>
                   <td><span className={emp.active ? "status-badge active" : "status-badge inactive"}>{emp.active ? c.active : c.inactive}</span></td>
