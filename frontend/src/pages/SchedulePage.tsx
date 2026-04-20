@@ -83,7 +83,12 @@ export function SchedulePage() {
 
   const createMutation = useMutation({
     mutationFn: async ({ employeeId, date }: { employeeId: string; date: string }) => {
-      const { error } = await supabase.from("shifts").insert({ employee_id: employeeId, shift_date: date });
+      const { error } = await supabase
+        .from("shifts")
+        .upsert(
+          { employee_id: employeeId, shift_date: date, source: "manual" },
+          { onConflict: "employee_id,shift_date" },
+        );
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["shifts"] }); queryClient.invalidateQueries({ queryKey: ["coverage_issues"] }); setActionError(null); },
