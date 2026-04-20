@@ -3,31 +3,53 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
 import { supabase } from "../lib/supabase";
-import type { Tables } from "../lib/database.types";
+import type { Database, Tables } from "../lib/database.types";
 
 type CoverageRule = Tables<"coverage_rules">;
+type EmployeeRole = Database["public"]["Enums"]["employee_role"];
 
-const SLOT_DEFS = [
-  { weekday: 0, label: "Mon" },
-  { weekday: 1, label: "Tue" },
-  { weekday: 2, label: "Wed" },
-  { weekday: 3, label: "Thu" },
-  { weekday: 4, label: "Fri" },
-  { weekday: 5, label: "Sat" },
-];
+type RuleDraft = {
+  id?: string;
+  weekday: number;
+  role: string;
+  time_window: string;
+  min_required: number;
+  note: string | null;
+  _deleted?: boolean;
+  _dirty?: boolean;
+};
 
-type DraftRow = { pharmacist: string; operator: string };
+const ROLES = ["pharmacist", "pha", "apprentice_pha", "driver", "auxiliary"] as const;
+
+function newDraft(): RuleDraft {
+  return {
+    weekday: 0,
+    role: "pharmacist",
+    time_window: "all_day",
+    min_required: 1,
+    note: null,
+    _dirty: true,
+  };
+}
+
+function rowKey(draft: RuleDraft, index: number): string {
+  return draft.id ?? `new-${index}`;
+}
 
 export function RulesPage() {
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState<Record<string, DraftRow>>({});
+  const [drafts, setDrafts] = useState<RuleDraft[]>([]);
   const t = useT("rules");
   const c = useT("common");
 
   const coverageQuery = useQuery({
     queryKey: ["coverage_rules"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("coverage_rules").select("*");
+      const { data, error } = await supabase
+        .from("coverage_rules")
+        .select("*")
+        .order("weekday")
+        .order("role");
       if (error) throw error;
       return data as CoverageRule[];
     },
@@ -35,58 +57,93 @@ export function RulesPage() {
 
   useEffect(() => {
     if (!coverageQuery.data) return;
-    const map: Record<string, DraftRow> = {};
-    for (const def of SLOT_DEFS) {
-      const key = String(def.weekday);
-      const pharmRow = coverageQuery.data.find(
-        (r) => r.weekday === def.weekday && r.role === "pharmacist"
-      );
-      const opRow = coverageQuery.data.find(
-        (r) => r.weekday === def.weekday && r.role !== "pharmacist"
-      );
-      map[key] = {
-        pharmacist: String(pharmRow?.min_required ?? 1),
-        operator: String(opRow?.min_required ?? 3),
-      };
-    }
-    setDraft(map);
+    setDrafts(
+      coverageQuery.data.map((row) => ({
+        id: row.id,
+        weekday: row.weekday,
+        role: row.role,
+        time_window: row.time_window,
+        min_required: row.min_required,
+        note: row.note ?? null,
+        _dirty: false,
+        _deleted: false,
+      }))
+    );
   }, [coverageQuery.data]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const rows: Omit<CoverageRule, "id">[] = [];
-      for (const def of SLOT_DEFS) {
-        const key = String(def.weekday);
-        const d = draft[key] ?? { pharmacist: "1", operator: "3" };
-        rows.push({
-          weekday: def.weekday,
-          role: "pharmacist",
-          min_required: Number(d.pharmacist),
-          time_window: "all_day",
-          note: null,
-        });
-        rows.push({
-          weekday: def.weekday,
-          role: "pha",
-          min_required: Number(d.operator),
-          time_window: "all_day",
-          note: null,
-        });
+      // Deletes
+      const toDelete = drafts.filter((d) => d._deleted && d.id);
+      for (const d of toDelete) {
+        const { error } = await supabase
+          .from("coverage_rules")
+          .delete()
+          .eq("id", d.id!);
+        if (error) throw error;
       }
-      const { error } = await supabase
-        .from("coverage_rules")
-        .upsert(rows, { onConflict: "weekday,role,time_window" });
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["coverage_rules"] });
+
+      // Updates
+      const toUpdate = drafts.filter((d) => !d._deleted && d._dirty && d.id);
+      for (const d of toUpdate) {
+        const { error } = await supabase
+          .from("coverage_rules")
+          .update({
+            weekday: d.weekday,
+            role: d.role as EmployeeRole,
+            time_window: d.time_window,
+            min_required: d.min_required,
+            note: d.note,
+          })
+          .eq("id", d.id!);
+        if (error) throw error;
+      }
+
+      // Inserts
+      const toInsert = drafts.filter((d) => !d._deleted && !d.id);
+      if (toInsert.length > 0) {
+        const { error } = await supabase.from("coverage_rules").insert(
+          toInsert.map((d) => ({
+            weekday: d.weekday,
+            role: d.role as EmployeeRole,
+            time_window: d.time_window,
+            min_required: d.min_required,
+            note: d.note,
+          }))
+        );
+        if (error) throw error;
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["coverage_rules"] });
     },
   });
 
-  const updateCell = (key: string, field: "pharmacist" | "operator", value: string) => {
-    setDraft((d) => ({
-      ...d,
-      [key]: { ...(d[key] ?? { pharmacist: "1", operator: "3" }), [field]: value },
-    }));
-  };
+  function updateDraft(index: number, patch: Partial<RuleDraft>) {
+    setDrafts((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...patch, _dirty: true };
+      return next;
+    });
+  }
+
+  function deleteRow(index: number) {
+    setDrafts((prev) => {
+      const row = prev[index];
+      if (row.id) {
+        const next = [...prev];
+        next[index] = { ...row, _deleted: true };
+        return next;
+      }
+      // No id: just drop it
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function addRow() {
+    setDrafts((prev) => [...prev, newDraft()]);
+  }
+
+  const visible = drafts.filter((d) => !d._deleted);
 
   return (
     <section className="page">
@@ -100,6 +157,9 @@ export function RulesPage() {
           >
             {saveMutation.isPending ? t.savingRules : t.saveRules}
           </button>
+          <button type="button" onClick={addRow} disabled={saveMutation.isPending}>
+            Add rule
+          </button>
         </div>
         {coverageQuery.isLoading ? <p>{t.loadingRules}</p> : null}
         {saveMutation.isSuccess ? <p>{t.savedSuccess}</p> : null}
@@ -107,38 +167,89 @@ export function RulesPage() {
         <table className="table rules-table">
           <thead>
             <tr>
-              <th>{t.dayHeader}</th>
-              <th>{t.pharmacistsHeader}</th>
-              <th>{t.operatorsHeader}</th>
+              <th>Day</th>
+              <th>Role</th>
+              <th>Time window</th>
+              <th>Min required</th>
+              <th>Note</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {SLOT_DEFS.map((def) => {
-              const key = String(def.weekday);
+            {visible.map((draft) => {
+              // Map visible index back to drafts index
+              const draftIdx = drafts.indexOf(draft);
               return (
-                <tr key={key}>
-                  <td>{c.weekdaysShort[def.weekday]}</td>
+                <tr key={rowKey(draft, draftIdx)}>
+                  <td>
+                    <select
+                      value={draft.weekday}
+                      onChange={(e) =>
+                        updateDraft(draftIdx, { weekday: Number(e.target.value) })
+                      }
+                    >
+                      {c.weekdaysShort.map((label, i) => (
+                        <option key={i} value={i}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <select
+                      value={draft.role}
+                      onChange={(e) => updateDraft(draftIdx, { role: e.target.value })}
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                   <td>
                     <input
-                      type="number"
-                      min="0"
-                      value={draft[key]?.pharmacist ?? "1"}
-                      onChange={(e) => updateCell(key, "pharmacist", e.target.value)}
+                      type="text"
+                      value={draft.time_window}
+                      onChange={(e) =>
+                        updateDraft(draftIdx, { time_window: e.target.value })
+                      }
                     />
                   </td>
                   <td>
                     <input
                       type="number"
                       min="0"
-                      value={draft[key]?.operator ?? "3"}
-                      onChange={(e) => updateCell(key, "operator", e.target.value)}
+                      value={draft.min_required}
+                      onChange={(e) =>
+                        updateDraft(draftIdx, { min_required: Number(e.target.value) })
+                      }
                     />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      value={draft.note ?? ""}
+                      onChange={(e) =>
+                        updateDraft(draftIdx, {
+                          note: e.target.value || null,
+                        })
+                      }
+                    />
+                  </td>
+                  <td>
+                    <button type="button" onClick={() => deleteRow(draftIdx)}>
+                      Delete
+                    </button>
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        {visible.length === 0 && !coverageQuery.isLoading ? (
+          <p style={{ padding: "1rem" }}>No rules. Click "Add rule" to create one.</p>
+        ) : null}
       </div>
     </section>
   );
