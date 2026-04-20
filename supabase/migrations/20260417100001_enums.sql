@@ -13,12 +13,6 @@ create type employment_status as enum (
   'terminated'
 );
 
-create type shift_type as enum (
-  'FULL_DAY',
-  'MORNING',
-  'AFTERNOON'
-);
-
 create type absence_type as enum (
   'VACATION',
   'UNAVAILABLE',

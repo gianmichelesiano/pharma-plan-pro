@@ -1,15 +1,12 @@
--- Concrete planned shift for one employee on one date.
+-- Concrete planned shift for one employee on one date. Whole-day only.
 create table shifts (
   id uuid primary key default gen_random_uuid(),
   employee_id uuid not null references employees(id) on delete cascade,
   shift_date date not null,
-  shift_type shift_type not null,
-  start_time time,
-  end_time time,
   note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (employee_id, shift_date, shift_type)
+  unique (employee_id, shift_date)
 );
 
 create index shifts_date_idx on shifts (shift_date);
