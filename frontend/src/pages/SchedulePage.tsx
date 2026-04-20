@@ -3,10 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
 import { supabase } from "../lib/supabase";
+import { useCoverageIssues, issuesByDate } from "../lib/coverage";
+import { CoverageBadges, hasCritical } from "../components/CoverageBadges";
 import type { Tables } from "../lib/database.types";
 
 type Employee = Tables<"employees">;
-type Shift = Tables<"shifts"> & { employee: Pick<Employee, "first_name" | "last_name" | "display_code" | "role"> | null };
+type Shift = Tables<"shifts"> & { employee: Pick<Employee, "first_name" | "last_name" | "display_code" | "role"> | null; source?: string };
 
 function formatDateCompact(value: string) {
   const [year, month, day] = value.split("-");
@@ -71,7 +73,7 @@ export function SchedulePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("shifts")
-        .select("*, employee:employees(first_name, last_name, display_code, role)")
+        .select("id, employee_id, shift_date, source, employee:employees(first_name, last_name, display_code, role)")
         .gte("shift_date", calStart)
         .lte("shift_date", calEnd);
       if (error) throw error;
@@ -120,6 +122,18 @@ export function SchedulePage() {
     for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
     return weeks;
   }, [selectedMonth, selectedYear]);
+
+  const issuesQuery = useCoverageIssues(calStart, calEnd);
+  const issuesMap = useMemo(() => issuesByDate(issuesQuery.data ?? []), [issuesQuery.data]);
+  const conflictSet = useMemo(
+    () =>
+      new Set(
+        (issuesQuery.data ?? [])
+          .filter((i) => i.kind === "conflict" && i.employee_id)
+          .map((i) => `${i.issue_date}|${i.employee_id}`),
+      ),
+    [issuesQuery.data],
+  );
 
   const shiftsByDate = useMemo(() => {
     const map = new Map<string, Shift[]>();
@@ -234,9 +248,10 @@ export function SchedulePage() {
                   const isOutOfMonth = dayDate.getMonth() !== selectedMonth;
                   const dayShifts = shiftsByDate.get(day) ?? [];
                   return (
-                    <div key={day} className={`calendar-cell${isOutOfMonth ? " out-of-month" : ""}`}>
+                    <div key={day} className={`calendar-cell${isOutOfMonth ? " out-of-month" : ""}${hasCritical(issuesMap.get(day) ?? []) ? " day-has-critical" : ""}`}>
                       <div className="calendar-cell-head">
                         <strong>{formatDateCompact(day)}</strong>
+                        <CoverageBadges issues={issuesMap.get(day) ?? []} />
                       </div>
                       <div
                         className="calendar-cell-body"
@@ -246,7 +261,13 @@ export function SchedulePage() {
                         {dayShifts.map((shift) => (
                           <div
                             key={shift.id}
-                            className={["calendar-person", shift.employee?.role === "pharmacist" ? "pharmacist" : "operator"].join(" ")}
+                            className={[
+                              "calendar-person",
+                              "shift-cell",
+                              shift.employee?.role === "pharmacist" ? "pharmacist" : "operator",
+                              shift.source === "generated" ? "is-generated" : "",
+                              conflictSet.has(`${shift.shift_date}|${shift.employee_id}`) ? "is-conflict" : "",
+                            ].filter(Boolean).join(" ")}
                             draggable
                             onDragStart={(e) => {
                               const p = serializeDrag({ kind: "shift", shiftId: shift.id });
