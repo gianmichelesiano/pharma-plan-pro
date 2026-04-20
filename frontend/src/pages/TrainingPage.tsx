@@ -8,7 +8,7 @@ import type { Tables } from "../lib/database.types";
 type Employee = Tables<"employees">;
 type Course = Tables<"training_courses">;
 type Participant = Tables<"training_participants"> & {
-  employee: Pick<Employee, "id" | "first_name" | "last_name"> | null;
+  employee: Pick<Employee, "id" | "first_name" | "last_name" | "role"> | null;
 };
 
 type CourseForm = {
@@ -31,6 +31,19 @@ function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   const [year, month, day] = value.split("-");
   return `${day}.${month}.${year}`;
+}
+
+const ROLE_COLORS: Record<string, { bg: string; border: string }> = {
+  pharmacist: { bg: "#d4edda", border: "#28a745" },
+  pha: { bg: "#dceaf9", border: "#2a5f8f" },
+  apprentice_pha: { bg: "#dceaf9", border: "#2a5f8f" },
+  driver: { bg: "#dceaf9", border: "#2a5f8f" },
+  auxiliary: { bg: "#dceaf9", border: "#2a5f8f" },
+};
+
+function getRoleChipStyle(role: string | undefined) {
+  const colors = ROLE_COLORS[role ?? ""] ?? { bg: "var(--chip-bg, #c8e0c8)", border: "var(--chip-border, #a0c8a0)" };
+  return { background: colors.bg, border: `1px solid ${colors.border}` };
 }
 
 export function TrainingPage() {
@@ -76,7 +89,7 @@ export function TrainingPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("training_participants")
-        .select("*, employee:employees(id, first_name, last_name)")
+        .select("*, employee:employees(id, first_name, last_name, role)")
         .eq("training_course_id", selectedCourseId!);
       if (error) throw error;
       return data as Participant[];
@@ -89,7 +102,7 @@ export function TrainingPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employees")
-        .select("id, first_name, last_name")
+        .select("id, first_name, last_name, role")
         .eq("active", true)
         .order("last_name");
       if (error) throw error;
@@ -285,7 +298,7 @@ export function TrainingPage() {
                   ? <span style={{ fontSize: "0.85rem", color: "var(--text-muted, #6f816f)" }}>{t.noParticipants}</span>
                   : null}
                 {(participantsQuery.data ?? []).map((p) => (
-                  <span key={p.id} style={{ background: "var(--chip-bg, #c8e0c8)", borderRadius: 12, padding: "3px 10px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span key={p.id} style={{ ...getRoleChipStyle(p.employee?.role), borderRadius: 12, padding: "3px 10px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: 6 }}>
                     {p.employee ? `${p.employee.first_name} ${p.employee.last_name}` : "—"}
                     <button type="button" onClick={() => removeParticipantMutation.mutate(p.employee_id)}
                       style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted, #6f816f)", padding: 0, lineHeight: 1 }}>×</button>
