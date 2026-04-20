@@ -33,90 +33,32 @@ insert into employees (display_code, first_name, last_name, email, role, employm
 -- Saturday-rotating employees are NOT seeded here; rotation is
 -- handled at scheduling time by the planning engine.
 -- ============================================================
+-- Pattern derivati da Arbeitsplan TPZ 2026 (threshold >=25% presenze per weekday).
+-- LH (assunto da Apr) troppo pochi dati: pattern manuale full-week.
 with emp as (select id, display_code from employees)
 insert into weekly_patterns (employee_id, weekday, active)
 select e.id, wp.weekday, true
 from emp e
 join (values
-  -- KR: Lu-Ma-Gio-Ve (sabato rotante gestito dal motore)
-  ('KR', 0),
-  ('KR', 1),
-  ('KR', 3),
-  ('KR', 4),
-  -- UE: Ma-Me (sabato rotante gestito dal motore)
-  ('UE', 1),
-  ('UE', 2),
-  -- CR: Ma-Me-Ve
-  ('CR', 1),
-  ('CR', 2),
-  ('CR', 4),
-  -- IA: Lunedì (sabato rotante gestito dal motore)
-  ('IA', 0),
-  -- ML: Lu-Me-Gio-Ve
-  ('ML', 0),
-  ('ML', 2),
-  ('ML', 3),
-  ('ML', 4),
-  -- FF: Ma-Gio (sabato rotante gestito dal motore)
-  ('FF', 1),
-  ('FF', 3),
-  -- ID: Lu-Gio-Ve
-  ('ID', 0),
-  ('ID', 3),
-  ('ID', 4),
-  -- LO: solo sabato
-  ('LO', 5),
-  -- MW: quasi full-time (Gen-Mar)
-  ('MW', 0),
-  ('MW', 1),
-  ('MW', 2),
-  ('MW', 3),
-  ('MW', 4),
-  ('MW', 5),
-  -- RS: Ma-Me-Ve-Sab
-  ('RS', 1),
-  ('RS', 2),
-  ('RS', 4),
-  ('RS', 5),
-  -- SB: Ma-Me-Ve (orari parziali gestiti fuori dal pattern)
-  ('SB', 1),
-  ('SB', 2),
-  ('SB', 4),
-  -- SI: Gio-Ve (Gen/Feb only, sabato rotante gestito dal motore)
-  ('SI', 3),
-  ('SI', 4),
-  -- TG: Mer + Sab
-  ('TG', 2),
-  ('TG', 5),
-  -- JH: Lu-Ve
-  ('JH', 0),
-  ('JH', 1),
-  ('JH', 2),
-  ('JH', 3),
-  ('JH', 4),
-  -- MH: Lu-Ma-Gio (Mer/Ven scuola; sabato rotante gestito dal motore)
-  ('MH', 0),
-  ('MH', 1),
-  ('MH', 3),
-  -- LT: Lu-Gio (sabato rotante gestito dal motore)
-  ('LT', 0),
-  ('LT', 3),
-  -- LM: solo sabato
-  ('LM', 5),
-  -- LH: full settimana (da Apr)
-  ('LH', 0),
-  ('LH', 1),
-  ('LH', 2),
-  ('LH', 3),
-  ('LH', 4),
-  ('LH', 5),
-  -- JF: full settimana (da Mag)
-  ('JF', 0),
-  ('JF', 1),
-  ('JF', 2),
-  ('JF', 3),
+  ('CR', 1), ('CR', 2), ('CR', 4),
+  ('FF', 1), ('FF', 3),
+  ('IA', 0), ('IA', 5),
+  ('ID', 0), ('ID', 3), ('ID', 4),
   ('JF', 4),
-  ('JF', 5)
+  ('JH', 0), ('JH', 2), ('JH', 3),
+  ('KR', 0), ('KR', 1), ('KR', 2), ('KR', 3), ('KR', 4), ('KR', 5),
+  ('LH', 0), ('LH', 1), ('LH', 2), ('LH', 3), ('LH', 4),
+  ('LM', 5),
+  ('LO', 5),
+  ('LT', 0), ('LT', 3), ('LT', 5),
+  ('MH', 0), ('MH', 1), ('MH', 3), ('MH', 5),
+  ('ML', 0), ('ML', 2), ('ML', 3), ('ML', 4),
+  ('MW', 0), ('MW', 1), ('MW', 2), ('MW', 4), ('MW', 5),
+  ('RS', 1), ('RS', 2),
+  ('SB', 1), ('SB', 2), ('SB', 4),
+  ('SI', 3), ('SI', 4), ('SI', 5),
+  ('TG', 2), ('TG', 5),
+  ('UE', 1), ('UE', 2)
 ) as wp(code, weekday) on wp.code = e.display_code;
 
 -- ============================================================
