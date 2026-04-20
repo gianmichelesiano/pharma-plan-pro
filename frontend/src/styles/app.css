@@ -587,6 +587,12 @@ input {
   color: #91a197;
 }
 
+.availability-table input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: #173f2f;
+}
+
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;
