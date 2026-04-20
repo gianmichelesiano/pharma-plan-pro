@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
@@ -8,20 +7,12 @@ import type { Tables } from "../lib/database.types";
 type Employee = Tables<"employees">;
 type Pattern = Tables<"weekly_patterns">;
 
-const WEEKDAY_SLOTS = ["MORNING", "AFTERNOON", "FULL_DAY"] as const;
-const SATURDAY_SLOTS = ["FULL_DAY", "SATURDAY_ROTATING"] as const;
-
-
-function slotsForWeekday(weekday: number): readonly string[] {
-  return weekday === 5 ? SATURDAY_SLOTS : WEEKDAY_SLOTS;
-}
+const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function AvailabilityPage() {
   const queryClient = useQueryClient();
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Record<string, boolean>>({});
   const t = useT("availability");
-  const c = useT("common");
 
   const employeesQuery = useQuery({
     queryKey: ["employees"],
@@ -36,134 +27,91 @@ export function AvailabilityPage() {
     },
   });
 
-  useEffect(() => {
-    if (selectedEmployeeId === null && employeesQuery.data?.length) {
-      setSelectedEmployeeId(employeesQuery.data[0].id);
-    }
-  }, [employeesQuery.data, selectedEmployeeId]);
-
   const patternsQuery = useQuery({
-    queryKey: ["weekly_patterns", selectedEmployeeId],
+    queryKey: ["weekly_patterns"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("weekly_patterns")
-        .select("*")
-        .eq("employee_id", selectedEmployeeId!);
+        .select("*");
       if (error) throw error;
       return data as Pattern[];
     },
-    enabled: selectedEmployeeId !== null,
   });
 
-  useEffect(() => {
-    if (!patternsQuery.data) return;
-    const map: Record<string, boolean> = {};
-    for (let weekday = 0; weekday < 6; weekday++) {
-      for (const slot of slotsForWeekday(weekday)) {
-        map[`${weekday}-${slot}`] = false;
-      }
-    }
-    for (const p of patternsQuery.data) {
-      map[`${p.weekday}-${p.slot}`] = p.active;
-    }
-    setDraft(map);
-  }, [patternsQuery.data]);
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedEmployeeId) throw new Error("No employee selected");
-      const { error: delError } = await supabase
+  const upsertMutation = useMutation({
+    mutationFn: async ({
+      employee_id,
+      weekday,
+      active,
+    }: {
+      employee_id: string;
+      weekday: number;
+      active: boolean;
+    }) => {
+      const { error } = await supabase
         .from("weekly_patterns")
-        .delete()
-        .eq("employee_id", selectedEmployeeId);
-      if (delError) throw delError;
-      const rows = Object.entries(draft)
-        .filter(([, active]) => active)
-        .map(([key]) => {
-          const [weekday, slot] = key.split("-");
-          return { employee_id: selectedEmployeeId, weekday: Number(weekday), slot, active: true };
-        });
-      if (rows.length > 0) {
-        const { error: insError } = await supabase.from("weekly_patterns").insert(rows);
-        if (insError) throw insError;
-      }
-      queryClient.invalidateQueries({ queryKey: ["weekly_patterns", selectedEmployeeId] });
+        .upsert(
+          { employee_id, weekday, active },
+          { onConflict: "employee_id,weekday" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["weekly_patterns"] });
     },
   });
 
-  const toggleSlot = (weekday: number, slot: string) => {
-    setDraft((d) => ({ ...d, [`${weekday}-${slot}`]: !d[`${weekday}-${slot}`] }));
-  };
+  const employees = employeesQuery.data ?? [];
+  const patterns = patternsQuery.data ?? [];
+
+  // Build map: "employeeId-weekday" -> active
+  const map: Record<string, boolean> = {};
+  patterns.forEach((p) => {
+    map[`${p.employee_id}-${String(p.weekday)}`] = p.active;
+  });
 
   return (
     <section className="page">
       <PageHeader title={t.title} description={t.description} />
       <div className="card">
-        <div className="toolbar">
-          <label className="field">
-            <span>{c.employee}</span>
-            <select
-              value={selectedEmployeeId ?? ""}
-              onChange={(e) => setSelectedEmployeeId(e.target.value)}
-              disabled={employeesQuery.isLoading}
-            >
-              {(employeesQuery.data ?? []).map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.first_name} {emp.last_name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || patternsQuery.isLoading}
-          >
-            {saveMutation.isPending ? t.saving : t.saveAvailability}
-          </button>
-        </div>
-
-        {saveMutation.isSuccess ? <p>{t.savedSuccess}</p> : null}
-        {saveMutation.error ? <p>{t.errorSaving}</p> : null}
+        {upsertMutation.error ? <p className="error">{t.errorSaving}</p> : null}
 
         <table className="table availability-table">
           <thead>
             <tr>
-              <th>{t.dayHeader}</th>
-              <th>MORNING <small style={{ color: "#6f816f", fontWeight: 400 }}>08:00–12:15</small></th>
-              <th>AFTERNOON <small style={{ color: "#6f816f", fontWeight: 400 }}>13:30–18:30</small></th>
-              <th>FULL_DAY <small style={{ color: "#6f816f", fontWeight: 400 }}>08:00–18:30</small></th>
-              <th>SAT ROTATING</th>
+              <th>Employee</th>
+              {WEEKDAY_LABELS.map((label) => (
+                <th key={label}>{label}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: 6 }, (_, weekday) => {
-              const slots = slotsForWeekday(weekday);
-              const allCols = ["MORNING", "AFTERNOON", "FULL_DAY", "SATURDAY_ROTATING"];
-              return (
-                <tr key={weekday}>
-                  <td>{c.weekdays[weekday]}</td>
-                  {allCols.map((slot) => {
-                    const key = `${weekday}-${slot}`;
-                    const applicable = slots.includes(slot);
-                    return (
-                      <td key={slot} style={!applicable ? { background: "var(--surface-2, #f4f4f4)" } : undefined}>
-                        {applicable ? (
-                          <label className="availability-toggle">
-                            <input
-                              type="checkbox"
-                              checked={draft[key] ?? false}
-                              onChange={() => toggleSlot(weekday, slot)}
-                            />
-                            <span>{draft[key] ? c.active : c.inactive}</span>
-                          </label>
-                        ) : null}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
+            {employees.map((emp) => (
+              <tr key={emp.id}>
+                <td>
+                  {emp.first_name} {emp.last_name}
+                </td>
+                {WEEKDAYS.map((weekday) => {
+                  const key = `${emp.id}-${String(weekday)}`;
+                  return (
+                    <td key={weekday}>
+                      <input
+                        type="checkbox"
+                        checked={!!map[key]}
+                        disabled={upsertMutation.isPending}
+                        onChange={(e) =>
+                          upsertMutation.mutate({
+                            employee_id: emp.id,
+                            weekday,
+                            active: e.target.checked,
+                          })
+                        }
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
