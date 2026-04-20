@@ -322,6 +322,10 @@ input {
   border-style: dashed;
   border-color: rgba(23, 63, 47, 0.08);
 }
+.calendar-cell.out-of-month {
+  opacity: 0.45;
+  background: rgba(23, 63, 47, 0.03);
+}
 
 .calendar-cell-head {
   display: flex;
@@ -460,10 +464,6 @@ input {
   line-height: 1;
 }
 
-.slot-stack {
-  gap: 0.75rem;
-}
-
 .employee-pool {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -489,6 +489,11 @@ input {
   cursor: grab;
   white-space: nowrap;
 }
+.employee-chip.role-pharmacist   { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.employee-chip.role-pha,
+.employee-chip.role-apprentice_pha,
+.employee-chip.role-driver,
+.employee-chip.role-auxiliary    { background: #f0f6ef; color: #173f2f; border-color: rgba(23,63,47,0.15); }
 
 .schedule-main-card {
   overflow: hidden;
@@ -500,6 +505,51 @@ input {
   padding: 0.8rem 1rem;
   border-radius: 0.8rem;
   margin-bottom: 1rem;
+}
+
+.schedule-week-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.8rem;
+}
+
+.schedule-week-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #4a5568);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.schedule-week-item:hover {
+  background: var(--surface-hover, #f0f4f2);
+  border-color: var(--border, #d1dcd6);
+}
+
+.schedule-week-item.active {
+  background: var(--accent-light, #e6f2ec);
+  border-color: var(--accent, #2d7a4f);
+  color: var(--accent, #2d7a4f);
+  font-weight: 600;
+}
+
+.schedule-week-kw {
+  font-weight: 600;
+  min-width: 2.8rem;
+}
+
+.schedule-week-range {
+  opacity: 0.75;
+  font-size: 0.78rem;
 }
 
 .mini-muted {
@@ -669,19 +719,43 @@ input {
 
 /* ── Piano mensile ─────────────────────────────────────────── */
 .piano-table-wrapper {
-  overflow-x: auto;
-  max-height: 72vh;
-  overflow-y: auto;
+  overflow: hidden;
+  max-height: none;
+}
+.piano-layout {
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+.piano-side-panel {
+  align-content: start;
+  display: grid;
+  gap: 0.75rem;
+  max-width: none;
+  padding: 0.75rem;
+}
+.piano-side-list {
+  display: grid;
+  gap: 0.55rem;
+}
+.piano-kpi-line {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  font-size: 0.78rem;
+  color: #496053;
 }
 .piano-table {
   border-collapse: collapse;
-  font-size: 0.76rem;
-  white-space: nowrap;
+  width: 100%;
+  table-layout: fixed;
+  font-size: clamp(0.58rem, 0.6vw, 0.72rem);
+  white-space: normal;
 }
 .piano-table th,
 .piano-table td {
   border: 1px solid #d8e6d8;
-  padding: 2px 5px;
+  padding: 1px 2px;
   text-align: center;
   vertical-align: middle;
 }
@@ -692,32 +766,62 @@ input {
   z-index: 2;
   text-align: left;
 }
-.piano-th-kw, .piano-td-kw { left: 0; min-width: 2.2rem; }
-.piano-th-date, .piano-td-date { left: 2.2rem; min-width: 3.4rem; }
-.piano-th-day, .piano-td-weekday { left: 5.6rem; min-width: 2rem; }
+.piano-th-kw, .piano-td-kw { left: 0; min-width: 1.7rem; width: 1.7rem; }
+.piano-th-date, .piano-td-date { left: 1.7rem; min-width: 3rem; width: 3rem; }
+.piano-th-day, .piano-td-weekday { left: 4.7rem; min-width: 1.7rem; width: 1.7rem; }
 thead .piano-th-fixed { z-index: 3; }
 .piano-td-kw { font-weight: 600; color: #496053; }
 .piano-td-weekday { color: #6f816f; }
-.piano-th-emp { font-weight: 600; min-width: 2.4rem; font-size: 0.72rem; }
+.piano-th-emp { font-weight: 600; min-width: 0; width: auto; font-size: 0.66rem; }
 .piano-th-emp.piano-role-pharmacist { background: #e0ede0; color: #173f2f; }
-.piano-th-emp.piano-role-pha { background: #eaf4ea; color: #2a5a3a; }
+.piano-th-emp.piano-role-pha { background: #e6eef9; color: #174066; }
 .piano-th-emp.piano-role-apprentice_pha,
 .piano-th-emp.piano-role-driver,
-.piano-th-emp.piano-role-auxiliary { background: #f4f8f4; color: #496053; }
+.piano-th-emp.piano-role-auxiliary { background: #e6eef9; color: #174066; }
 .piano-th-summary,
-.piano-td-summary { background: #f0f8f0; font-weight: 600; min-width: 2rem; font-size: 0.72rem; }
-.piano-cell { min-width: 2.4rem; height: 1.5rem; font-size: 0.7rem; font-weight: 600; }
-.piano-cell-present { background: #c8e8c8; color: #173f2f; }
-.piano-cell-absence-VACATION { background: #b8d4f0; color: #1a3a6a; }
-.piano-cell-absence-SICK { background: #f0b8b8; color: #6a1a1a; }
-.piano-cell-absence-SCHOOL { background: #f8ebb8; color: #5a4a10; }
-.piano-cell-absence-TRAINING { background: #f0d8b8; color: #6a3a10; }
-.piano-cell-absence-UNAVAILABLE { background: #e0d0e8; color: #3a2050; }
-.piano-cell-absence-HR_MEETING { background: #e8e8e8; color: #404040; }
-.piano-cell-expected { background: transparent; color: #b0c8b0; font-weight: 400; }
-.piano-cell-rotating { background: #e8d8f4; color: #4a2080; }
-.piano-cell-off { background: #f4f4f4; }
+.piano-td-summary { background: #f0f8f0; font-weight: 600; min-width: 0; width: auto; font-size: 0.66rem; }
+.piano-row-total td {
+  background: #e9f3e9;
+  font-weight: 700;
+  border-top: 2px solid #c5d8c5;
+}
+.piano-cell { min-width: 0; width: auto; min-height: 1.45rem; font-size: 0.62rem; font-weight: 600; }
 .piano-cell-sunday, .piano-row-sunday td { background: #f0f0f0; color: #c0c0c0; }
+.piano-cell { position: relative; }
+.piano-cell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.piano-cell.piano-role-pharmacist::before { background: rgba(168, 216, 168, 0.3); }
+.piano-cell.piano-role-pha::before { background: rgba(184, 208, 236, 0.35); }
+.piano-cell.piano-role-apprentice_pha::before { background: rgba(184, 208, 236, 0.35); }
+.piano-cell.piano-role-driver::before { background: rgba(184, 208, 236, 0.35); }
+.piano-cell.piano-role-auxiliary::before { background: rgba(184, 208, 236, 0.35); }
+.piano-cell > * { position: relative; z-index: 1; }
+.piano-cell-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.08rem 0;
+}
+.piano-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  padding: 0.06rem 0.24rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.piano-badge-absence { background: #f8d9d9; color: #6a1a1a; }
+.piano-badge-empty { background: #f0f3ef; color: #7b8c80; }
 .piano-coverage-ok { color: #2d6a2d; }
 .piano-coverage-warn { background: #fde8a8; color: #7a4a00; font-weight: 700; }
 .piano-legend {
@@ -730,24 +834,54 @@ thead .piano-th-fixed { z-index: 3; }
   font-size: 0.76rem;
   color: #496053;
 }
-.piano-legend-item { display: flex; align-items: center; gap: 0.3rem; }
-.piano-legend-present::before,
-.piano-legend-vacation::before,
-.piano-legend-sick::before,
-.piano-legend-school::before,
-.piano-legend-training::before,
-.piano-legend-rotating::before {
+.piano-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.piano-legend-item::before {
   content: "";
   display: inline-block;
   width: 0.9rem;
   height: 0.7rem;
   border-radius: 2px;
-  border: 1px solid rgba(0,0,0,0.15);
+  border: 1px solid rgba(0, 0, 0, 0.15);
 }
-.piano-legend-present::before { background: #c8e8c8; }
 .piano-legend-vacation::before { background: #b8d4f0; }
 .piano-legend-sick::before { background: #f0b8b8; }
-.piano-legend-school::before { background: #f8ebb8; }
 .piano-legend-training::before { background: #f0d8b8; }
-.piano-legend-expected::before { content: "·"; font-size: 1.2rem; line-height: 1; color: #b0c8b0; }
-.piano-legend-rotating::before { background: #e8d8f4; }
+.piano-legend-empty::before { background: #f0f3ef; }
+.piano-issue-item,
+.piano-suggestion-item {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(23, 63, 47, 0.12);
+}
+.piano-issue-item.critical {
+  background: #fff0e3;
+  border-color: rgba(138, 61, 22, 0.2);
+}
+.piano-issue-item.warning {
+  background: #fff8df;
+  border-color: rgba(122, 74, 0, 0.2);
+}
+.piano-suggestion-item {
+  background: #f5faf4;
+}
+
+@media (max-width: 1100px) {
+  .piano-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.shift-cell {
+  display: inline-block;
+  padding: 2px 6px;
+  margin: 1px;
+  border-radius: 4px;
+  background: var(--color-sage-100, #e7efe5);
+  font-size: 0.85rem;
+}
