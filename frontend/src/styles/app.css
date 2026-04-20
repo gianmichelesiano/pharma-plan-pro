@@ -397,15 +397,15 @@ input {
 }
 
 .calendar-person.pharmacist {
-  background: #d1fae5;
-  color: #065f46;
-  border-color: #6ee7b7;
+  background: #e6f2ec;
+  color: #2d7a4f;
+  border-color: #2d7a4f;
 }
 
 .calendar-person.operator {
-  background: #e7f3e2;
-  color: #214b2f;
-  border-color: rgba(33, 75, 47, 0.12);
+  background: #f0f6ef;
+  color: #173f2f;
+  border-color: rgba(23, 63, 47, 0.15);
 }
 
 .calendar-person.manual {
@@ -489,7 +489,7 @@ input {
   cursor: grab;
   white-space: nowrap;
 }
-.employee-chip.role-pharmacist   { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.employee-chip.role-pharmacist   { background: #e6f2ec; color: #2d7a4f; border-color: #2d7a4f; }
 .employee-chip.role-pha,
 .employee-chip.role-apprentice_pha,
 .employee-chip.role-driver,
