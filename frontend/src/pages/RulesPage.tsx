@@ -62,20 +62,20 @@ export function RulesPage() {
           weekday: def.weekday,
           role: "pharmacist",
           min_required: Number(d.pharmacist),
-          time_window: "",
+          time_window: "all_day",
           note: null,
         });
         rows.push({
           weekday: def.weekday,
           role: "pha",
           min_required: Number(d.operator),
-          time_window: "",
+          time_window: "all_day",
           note: null,
         });
       }
       const { error } = await supabase
         .from("coverage_rules")
-        .upsert(rows, { onConflict: "weekday,role" });
+        .upsert(rows, { onConflict: "weekday,role,time_window" });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["coverage_rules"] });
     },
