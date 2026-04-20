@@ -446,7 +446,7 @@ async function syncRunToShifts(
   if ((draft ?? []).length > 0) {
     const { error: insError } = await supabase
       .from("shifts")
-      .insert((draft ?? []).map((s) => ({
+      .insert((draft ?? []).map((s: { employee_id: string; shift_date: string }) => ({
         employee_id: s.employee_id,
         shift_date: s.shift_date,
       })));
@@ -615,7 +615,7 @@ Deno.serve(async (req) => {
       if ((draft ?? []).length > 0) {
         const { error: insError } = await supabase
           .from("shifts")
-          .insert((draft ?? []).map((s) => ({
+          .insert((draft ?? []).map((s: { employee_id: string; shift_date: string }) => ({
             employee_id: s.employee_id,
             shift_date: s.shift_date,
           })));
