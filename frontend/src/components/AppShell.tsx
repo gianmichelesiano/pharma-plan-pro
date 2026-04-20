@@ -10,8 +10,8 @@ const navRoutes = [
   { to: "/employees", key: "employees" as const },
   { to: "/availability", key: "availability" as const },
   { to: "/absences", key: "absences" as const },
-  { to: "/schedule", key: "schedule" as const },
   { to: "/training", key: "training" as const },
+  { to: "/schedule", key: "schedule" as const },
   { to: "/piano", key: "piano" as const },
 ];
 
