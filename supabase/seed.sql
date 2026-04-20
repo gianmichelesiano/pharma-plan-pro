@@ -177,26 +177,15 @@ join e on e.display_code = link.emp_code;
 -- ⚠️  Verify with Katja: minima observed may include emergency days.
 -- ============================================================
 insert into coverage_rules (weekday, role, min_required, time_window, note) values
-  -- Monday
-  (0, 'pharmacist',    2, 'all_day', 'LUN min farmacisti'),
-  (0, 'pha',           1, 'all_day', 'LUN min PhA'),
-  (0, 'pha',           2, 'evening', 'LUN serale ≥2 PhA dopo 17:45'),
-  -- Tuesday
-  (1, 'pharmacist',    2, 'all_day', 'MAR min farmacisti'),
-  (1, 'pha',           1, 'all_day', 'MAR min PhA'),
-  (1, 'pha',           3, 'evening', 'MAR serale ≥3 PhA dopo 17:45'),
-  -- Wednesday — serale più stringente (apertura serale)
-  (2, 'pharmacist',    2, 'all_day', 'MER min farmacisti'),
-  (2, 'pha',           2, 'all_day', 'MER min PhA'),
-  (2, 'pha',           2, 'evening', 'MER serale ≥2 PhA dopo 17:45'),
-  -- Thursday
-  (3, 'pharmacist',    2, 'all_day', 'GIO min farmacisti'),
-  (3, 'pha',           1, 'all_day', 'GIO min PhA'),
-  (3, 'pha',           3, 'evening', 'GIO serale ≥3 PhA dopo 17:45'),
-  -- Friday
-  (4, 'pharmacist',    2, 'all_day', 'VEN min farmacisti'),
-  (4, 'pha',           2, 'all_day', 'VEN min PhA'),
-  (4, 'pha',           3, 'evening', 'VEN serale ≥3 PhA dopo 17:45'),
-  -- Saturday — no evening (farmacia chiude 16-17h)
-  (5, 'pharmacist',    1, 'all_day', 'SAB min farmacista responsabile'),
-  (5, 'auxiliary',     1, 'all_day', 'SAB min ausiliaria (LO/LM)');
+  (0, 'pharmacist', 2, 'all_day', 'LUN farmacisti'),
+  (0, 'pha',        1, 'all_day', 'LUN altri'),
+  (1, 'pharmacist', 2, 'all_day', 'MAR farmacisti'),
+  (1, 'pha',        1, 'all_day', 'MAR altri'),
+  (2, 'pharmacist', 2, 'all_day', 'MER farmacisti'),
+  (2, 'pha',        2, 'all_day', 'MER altri'),
+  (3, 'pharmacist', 2, 'all_day', 'GIO farmacisti'),
+  (3, 'pha',        1, 'all_day', 'GIO altri'),
+  (4, 'pharmacist', 2, 'all_day', 'VEN farmacisti'),
+  (4, 'pha',        2, 'all_day', 'VEN altri'),
+  (5, 'pharmacist', 1, 'all_day', 'SAB farmacista'),
+  (5, 'pha',        1, 'all_day', 'SAB altri');
