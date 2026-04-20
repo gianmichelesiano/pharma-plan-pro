@@ -699,6 +699,23 @@ input {
   padding-top: 1rem;
 }
 
+.sidebar-credit {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.75rem;
+  color: #8ea095;
+  border-top: 1px solid rgba(23, 63, 47, 0.08);
+}
+
+.sidebar-credit a {
+  color: #8ea095;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.sidebar-credit a:hover {
+  color: #173f2f;
+}
+
 .lang-switcher {
   display: flex;
   align-items: center;

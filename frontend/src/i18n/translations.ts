@@ -50,6 +50,7 @@ const translations = {
       schedule: "Pianificazione",
       training: "Formazione",
       piano: "Piano mensile",
+      users: "Utenti",
       signOut: "Esci",
     },
     dashboard: {
@@ -293,6 +294,7 @@ const translations = {
       schedule: "Planung",
       training: "Schulungen",
       piano: "Monatsplan",
+      users: "Benutzer",
       signOut: "Abmelden",
     },
     dashboard: {
@@ -536,6 +538,7 @@ const translations = {
       schedule: "Planification",
       training: "Formation",
       piano: "Plan mensuel",
+      users: "Utilisateurs",
       signOut: "Se déconnecter",
     },
     dashboard: {
@@ -779,6 +782,7 @@ const translations = {
       schedule: "Scheduling",
       training: "Training",
       piano: "Monthly Plan",
+      users: "Users",
       signOut: "Sign out",
     },
     dashboard: {

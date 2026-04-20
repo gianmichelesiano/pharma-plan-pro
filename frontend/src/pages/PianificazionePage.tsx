@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { CoverageBadges, hasCritical } from "../components/CoverageBadges";
 import { useT } from "../i18n/useT";
+import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { supabase } from "../lib/supabase";
 import { useCoverageIssues, issuesByDate } from "../lib/coverage";
@@ -50,6 +51,7 @@ function isWeekend(dateStr: string): boolean {
 
 export function PianificazionePage() {
   const t = useT("planning");
+  const { isAdmin } = useAuth();
   const { lang } = useLanguage();
   const queryClient = useQueryClient();
   const now = new Date();
@@ -150,14 +152,16 @@ export function PianificazionePage() {
               ))}
             </select>
           </label>
-          <button
-            className="primary"
-            onClick={() => generate.mutate()}
-            disabled={generate.isPending}
-          >
-            {generate.isPending ? t.generating : t.generate}
-          </button>
-          {generate.error ? <span className="error">{String(generate.error)}</span> : null}
+          {isAdmin && (
+            <button
+              className="primary"
+              onClick={() => generate.mutate()}
+              disabled={generate.isPending}
+            >
+              {generate.isPending ? t.generating : t.generate}
+            </button>
+          )}
+          {isAdmin && generate.error ? <span className="error">{String(generate.error)}</span> : null}
         </div>
 
         <div className="plan-grid-wrap">

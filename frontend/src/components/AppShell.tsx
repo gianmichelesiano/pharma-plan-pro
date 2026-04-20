@@ -4,21 +4,26 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { LANG_FLAGS, LANG_NAMES, nextLang } from "../i18n/translations";
 import { useT } from "../i18n/useT";
 
-const navRoutes = [
-  { to: "/", key: "dashboard" as const },
-  { to: "/rules", key: "rules" as const },
-  { to: "/employees", key: "employees" as const },
-  { to: "/availability", key: "availability" as const },
-  { to: "/absences", key: "absences" as const },
-  { to: "/training", key: "training" as const },
-  { to: "/schedule", key: "schedule" as const },
-  { to: "/piano", key: "piano" as const },
+type NavKey = "dashboard" | "rules" | "employees" | "availability" | "absences" | "training" | "schedule" | "piano" | "users";
+type NavItem = { to: string; key: NavKey; adminOnly?: boolean };
+
+const navRoutes: NavItem[] = [
+  { to: "/", key: "dashboard" },
+  { to: "/schedule", key: "schedule" },
+  { to: "/piano", key: "piano" },
+  { to: "/rules", key: "rules", adminOnly: true },
+  { to: "/employees", key: "employees", adminOnly: true },
+  { to: "/availability", key: "availability", adminOnly: true },
+  { to: "/absences", key: "absences", adminOnly: true },
+  { to: "/training", key: "training", adminOnly: true },
+  { to: "/admin/users", key: "users", adminOnly: true },
 ];
 
 export function AppShell() {
   const { lang, setLang } = useLanguage();
-  const { session, signOut } = useAuth();
+  const { session, signOut, isAdmin } = useAuth();
   const nav = useT("nav");
+  const visible = navRoutes.filter((r) => !r.adminOnly || isAdmin);
 
   return (
     <div className="layout">
@@ -31,14 +36,14 @@ export function AppShell() {
           </div>
         </div>
         <nav className="nav">
-          {navRoutes.map((item) => (
+          {visible.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === "/"}
               className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
             >
-              {nav[item.key]}
+              {nav[item.key] ?? item.key}
             </NavLink>
           ))}
         </nav>
@@ -57,6 +62,9 @@ export function AppShell() {
             <span>{LANG_FLAGS[lang]}</span>
             <span>{LANG_NAMES[lang]}</span>
           </button>
+        </div>
+        <div className="sidebar-credit">
+          <a href="https://www.speats.ch" target="_blank" rel="noopener noreferrer">Built by Speats</a>
         </div>
       </aside>
       <main className="content">

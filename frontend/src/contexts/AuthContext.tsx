@@ -2,9 +2,17 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
+type Profile = {
+  id: string;
+  admin: boolean;
+  approved: boolean;
+};
+
 type AuthState = {
   session: Session | null;
   user: User | null;
+  profile: Profile | null;
+  isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ needsEmailConfirm: boolean }>;
@@ -13,18 +21,32 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
+async function fetchProfile(userId: string | undefined): Promise<Profile | null> {
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, admin, approved")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) return null;
+  return (data as Profile | null) ?? null;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
+      fetchProfile(data.session?.user?.id).then(setProfile).catch(() => setProfile(null));
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
+      fetchProfile(s?.user?.id).then(setProfile).catch(() => setProfile(null));
     });
 
     return () => sub.subscription.unsubscribe();
@@ -47,11 +69,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
+    setProfile(null);
   }
 
   const value: AuthState = {
     session,
     user: session?.user ?? null,
+    profile,
+    isAdmin: !!profile?.admin,
     loading,
     signIn,
     signUp,

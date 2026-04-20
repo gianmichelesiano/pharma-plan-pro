@@ -28,7 +28,7 @@ export function RegisterPage() {
         setError(t.emailConfirm);
         setLoading(false);
       } else {
-        navigate("/", { replace: true });
+        navigate("/pending", { replace: true });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t.registerError);

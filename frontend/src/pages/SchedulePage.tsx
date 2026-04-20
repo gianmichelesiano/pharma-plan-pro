@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
+import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { useCoverageIssues, issuesByDate } from "../lib/coverage";
 import { CoverageBadges, hasCritical } from "../components/CoverageBadges";
@@ -183,6 +184,7 @@ export function SchedulePage() {
 
   const handleDrop = (e: React.DragEvent, date: string) => {
     e.preventDefault();
+    if (!isAdmin) return;
     const payload = parseDrag(e.dataTransfer.getData("application/pharma-plan") || e.dataTransfer.getData("text/plain"));
     if (!payload) return;
     if (payload.kind === "employee") {
@@ -192,11 +194,13 @@ export function SchedulePage() {
 
   const handleDeleteDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (!isAdmin) return;
     const payload = parseDrag(e.dataTransfer.getData("application/pharma-plan") || e.dataTransfer.getData("text/plain"));
     if (!payload || payload.kind !== "shift") return;
     deleteMutation.mutate(payload.shiftId);
   };
 
+  const { isAdmin } = useAuth();
   const isBusy = createMutation.isPending || deleteMutation.isPending;
 
   const activeEmployees = useMemo(
@@ -299,12 +303,14 @@ export function SchedulePage() {
                               <strong>{shift.employee ? `${shift.employee.first_name} ${shift.employee.last_name}` : "—"}</strong>
                               <span>{t.roleLabel}: {getRoleLabel(shift.employee?.role)}</span>
                             </div>
-                            <button
-                              type="button"
-                              className="person-remove"
-                              onClick={() => deleteMutation.mutate(shift.id)}
-                              disabled={isBusy}
-                            >x</button>
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                className="person-remove"
+                                onClick={() => deleteMutation.mutate(shift.id)}
+                                disabled={isBusy}
+                              >x</button>
+                            )}
                           </div>
                         ))}
                       </div>

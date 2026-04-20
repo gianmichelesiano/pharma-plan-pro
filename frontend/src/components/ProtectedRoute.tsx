@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 type Props = { children?: ReactNode };
 
 export function ProtectedRoute({ children }: Props) {
-  const { session, loading } = useAuth();
+  const { session, loading, profile } = useAuth();
 
   if (loading) {
     return <div style={{ padding: 24 }}>Loading session...</div>;
@@ -13,6 +13,10 @@ export function ProtectedRoute({ children }: Props) {
 
   if (!session) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (profile && !profile.approved) {
+    return <Navigate to="/pending" replace />;
   }
 
   return children ? <>{children}</> : <Outlet />;

@@ -188,7 +188,9 @@ export type Database = {
       }
       employees: {
         Row: {
+          access_level: Database["public"]["Enums"]["access_level"]
           active: boolean
+          approved: boolean
           created_at: string
           display_code: string
           email: string | null
@@ -204,7 +206,9 @@ export type Database = {
           weekly_hours_pct: number | null
         }
         Insert: {
+          access_level?: Database["public"]["Enums"]["access_level"]
           active?: boolean
+          approved?: boolean
           created_at?: string
           display_code: string
           email?: string | null
@@ -220,7 +224,9 @@ export type Database = {
           weekly_hours_pct?: number | null
         }
         Update: {
+          access_level?: Database["public"]["Enums"]["access_level"]
           active?: boolean
+          approved?: boolean
           created_at?: string
           display_code?: string
           email?: string | null
@@ -234,6 +240,30 @@ export type Database = {
           role?: Database["public"]["Enums"]["employee_role"]
           updated_at?: string
           weekly_hours_pct?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          admin: boolean
+          approved: boolean
+          created_at: string
+          email: string | null
+          id: string
+        }
+        Insert: {
+          admin?: boolean
+          approved?: boolean
+          created_at?: string
+          email?: string | null
+          id: string
+        }
+        Update: {
+          admin?: boolean
+          approved?: boolean
+          created_at?: string
+          email?: string | null
+          id?: string
         }
         Relationships: []
       }
@@ -409,6 +439,7 @@ export type Database = {
         | "SCHOOL"
         | "TRAINING"
         | "HR_MEETING"
+      access_level: "user" | "admin" | "super_admin"
       employee_role:
         | "pharmacist"
         | "pha"
@@ -555,6 +586,7 @@ export const Constants = {
         "TRAINING",
         "HR_MEETING",
       ],
+      access_level: ["user", "admin", "super_admin"],
       employee_role: [
         "pharmacist",
         "pha",

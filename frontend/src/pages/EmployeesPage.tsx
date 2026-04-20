@@ -10,8 +10,6 @@ type Employee = Tables<"employees">;
 type EmployeeForm = {
   first_name: string;
   last_name: string;
-  email: string;
-  phone: string;
   display_code: string;
   role: Employee["role"];
   weekly_hours_pct: string;
@@ -21,8 +19,6 @@ type EmployeeForm = {
 const initialForm: EmployeeForm = {
   first_name: "",
   last_name: "",
-  email: "",
-  phone: "",
   display_code: "",
   role: "pha",
   weekly_hours_pct: "100",
@@ -71,8 +67,6 @@ export function EmployeesPage() {
     const payload = {
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
-      email: form.email.trim() || null,
-      phone: form.phone.trim() || null,
       display_code: form.display_code.trim() || (form.first_name.slice(0, 2).toUpperCase() + form.last_name.slice(0, 2).toUpperCase()),
       role: form.role,
       weekly_hours_pct: Number(form.weekly_hours_pct),
@@ -88,8 +82,6 @@ export function EmployeesPage() {
     setForm({
       first_name: emp.first_name,
       last_name: emp.last_name,
-      email: emp.email ?? "",
-      phone: emp.phone ?? "",
       display_code: emp.display_code,
       role: emp.role,
       weekly_hours_pct: String(emp.weekly_hours_pct ?? 100),
@@ -120,14 +112,6 @@ export function EmployeesPage() {
             <label className="field">
               <span>{t.displayCode}</span>
               <input value={form.display_code} onChange={(e) => setForm((f) => ({ ...f, display_code: e.target.value }))} placeholder="Es. MA-BI" />
-            </label>
-            <label className="field">
-              <span>{t.email}</span>
-              <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-            </label>
-            <label className="field">
-              <span>{t.phone}</span>
-              <input type="tel" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
             </label>
             <label className="field">
               <span>{c.role}</span>
@@ -168,8 +152,6 @@ export function EmployeesPage() {
             <thead>
               <tr>
                 <th>{t.nameHeader}</th>
-                <th>{t.emailHeader}</th>
-                <th>{t.phoneHeader}</th>
                 <th>{t.roleHeader}</th>
                 <th>%</th>
                 <th>{t.statusHeader}</th>
@@ -180,8 +162,6 @@ export function EmployeesPage() {
               {filteredEmployees.map((emp) => (
                 <tr key={emp.id}>
                   <td>{emp.first_name} {emp.last_name} <small style={{ color: "#6f816f" }}>({emp.display_code})</small></td>
-                  <td>{emp.email ?? "—"}</td>
-                  <td>{emp.phone ?? "—"}</td>
                   <td>{(c as unknown as Record<string, string>)[`role_${emp.role}`] ?? emp.role}</td>
                   <td>{emp.weekly_hours_pct ?? "—"}</td>
                   <td><span className={emp.active ? "status-badge active" : "status-badge inactive"}>{emp.active ? c.active : c.inactive}</span></td>
