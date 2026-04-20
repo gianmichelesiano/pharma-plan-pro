@@ -234,215 +234,6 @@ export type Database = {
         }
         Relationships: []
       }
-      planning_draft_shifts: {
-        Row: {
-          created_at: string
-          employee_id: string
-          id: string
-          legacy_code: string | null
-          run_id: string
-          shift_date: string
-          source: string
-        }
-        Insert: {
-          created_at?: string
-          employee_id: string
-          id?: string
-          legacy_code?: string | null
-          run_id: string
-          shift_date: string
-          source?: string
-        }
-        Update: {
-          created_at?: string
-          employee_id?: string
-          id?: string
-          legacy_code?: string | null
-          run_id?: string
-          shift_date?: string
-          source?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "planning_draft_shifts_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "planning_draft_shifts_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "planning_runs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      planning_issues: {
-        Row: {
-          code: string
-          created_at: string
-          details: Json
-          id: string
-          issue_date: string
-          message: string
-          resolved: boolean
-          role: Database["public"]["Enums"]["employee_role"] | null
-          run_id: string
-          severity: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          details?: Json
-          id?: string
-          issue_date: string
-          message: string
-          resolved?: boolean
-          role?: Database["public"]["Enums"]["employee_role"] | null
-          run_id: string
-          severity?: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          details?: Json
-          id?: string
-          issue_date?: string
-          message?: string
-          resolved?: boolean
-          role?: Database["public"]["Enums"]["employee_role"] | null
-          run_id?: string
-          severity?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "planning_issues_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "planning_runs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      planning_legacy_code_map: {
-        Row: {
-          active: boolean
-          display_label: string
-          id: string
-          legacy_code: string
-          normalized_kind: string
-        }
-        Insert: {
-          active?: boolean
-          display_label: string
-          id?: string
-          legacy_code: string
-          normalized_kind: string
-        }
-        Update: {
-          active?: boolean
-          display_label?: string
-          id?: string
-          legacy_code?: string
-          normalized_kind?: string
-        }
-        Relationships: []
-      }
-      planning_runs: {
-        Row: {
-          coverage_score: number | null
-          created_at: string
-          fairness_score: number | null
-          id: string
-          metadata: Json
-          month: number
-          status: string
-          updated_at: string
-          year: number
-        }
-        Insert: {
-          coverage_score?: number | null
-          created_at?: string
-          fairness_score?: number | null
-          id?: string
-          metadata?: Json
-          month: number
-          status?: string
-          updated_at?: string
-          year: number
-        }
-        Update: {
-          coverage_score?: number | null
-          created_at?: string
-          fairness_score?: number | null
-          id?: string
-          metadata?: Json
-          month?: number
-          status?: string
-          updated_at?: string
-          year?: number
-        }
-        Relationships: []
-      }
-      planning_suggestions: {
-        Row: {
-          action_payload: Json
-          applied_at: string | null
-          created_at: string
-          description: string | null
-          id: string
-          issue_id: string | null
-          run_id: string
-          score: number
-          status: string
-          suggestion_type: string
-          title: string
-        }
-        Insert: {
-          action_payload?: Json
-          applied_at?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          issue_id?: string | null
-          run_id: string
-          score?: number
-          status?: string
-          suggestion_type: string
-          title: string
-        }
-        Update: {
-          action_payload?: Json
-          applied_at?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          issue_id?: string | null
-          run_id?: string
-          score?: number
-          status?: string
-          suggestion_type?: string
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "planning_suggestions_issue_id_fkey"
-            columns: ["issue_id"]
-            isOneToOne: false
-            referencedRelation: "planning_issues"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "planning_suggestions_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "planning_runs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       shifts: {
         Row: {
           created_at: string
@@ -450,6 +241,7 @@ export type Database = {
           id: string
           note: string | null
           shift_date: string
+          source: string
           updated_at: string
         }
         Insert: {
@@ -458,6 +250,7 @@ export type Database = {
           id?: string
           note?: string | null
           shift_date: string
+          source?: string
           updated_at?: string
         }
         Update: {
@@ -466,6 +259,7 @@ export type Database = {
           id?: string
           note?: string | null
           shift_date?: string
+          source?: string
           updated_at?: string
         }
         Relationships: [
@@ -590,7 +384,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_coverage_issues: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          assigned: number
+          employee_id: string
+          issue_date: string
+          kind: string
+          required: number
+          role: Database["public"]["Enums"]["employee_role"]
+          severity: string
+        }[]
+      }
     }
     Enums: {
       absence_status: "requested" | "approved" | "rejected"
