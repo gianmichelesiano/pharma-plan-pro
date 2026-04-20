@@ -27,6 +27,25 @@ function daysInRange(start: string, end: string): string[] {
   return out;
 }
 
+function formatDateLabel(dateStr: string): string {
+  const [y, mo, da] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, mo - 1, da));
+  const label = new Intl.DateTimeFormat("it-IT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function isWeekend(dateStr: string): boolean {
+  const [y, mo, da] = dateStr.split("-").map(Number);
+  const dow = new Date(Date.UTC(y, mo - 1, da)).getUTCDay();
+  return dow === 0 || dow === 6;
+}
+
 export function PianificazionePage() {
   const t = useT("planning");
   const queryClient = useQueryClient();
@@ -78,6 +97,7 @@ export function PianificazionePage() {
   });
 
   const days = useMemo(() => daysInRange(start, end), [start, end]);
+  const employees = useMemo(() => employeesQuery.data ?? [], [employeesQuery.data]);
   const issuesMap = useMemo(() => issuesByDate(issuesQuery.data ?? []), [issuesQuery.data]);
 
   const shiftsByDateEmp = useMemo(() => {
@@ -133,39 +153,67 @@ export function PianificazionePage() {
           <table className="table plan-grid">
             <thead>
               <tr>
-                <th>{t.employee}</th>
-                {days.map((d) => {
-                  const dayIssues = issuesMap.get(d) ?? [];
-                  const critical = hasCritical(dayIssues);
-                  return (
-                    <th key={d} className={critical ? "day-has-critical" : ""}>
-                      <div>{d.slice(8)}</div>
-                      <CoverageBadges issues={dayIssues} />
-                    </th>
-                  );
-                })}
+                <th className="date-cell">Data</th>
+                {employees.map((emp) => (
+                  <th key={emp.id}>{emp.display_code ?? emp.first_name}</th>
+                ))}
+                <th className="totals-cell">Total</th>
+                <th className="totals-cell">Bedien</th>
+                <th className="totals-cell">PhA&apos;s</th>
               </tr>
             </thead>
             <tbody>
-              {(employeesQuery.data ?? []).map((emp) => (
-                <tr key={emp.id}>
-                  <td>{emp.first_name} {emp.last_name}</td>
-                  {days.map((d) => {
-                    const key = `${d}|${emp.id}`;
-                    const s = shiftsByDateEmp.get(key);
-                    const conflict = conflictsByDateEmp.has(key);
-                    if (!s) return <td key={d}></td>;
-                    const cls = ["shift-cell"];
-                    if (s.source === "generated") cls.push("is-generated");
-                    if (conflict) cls.push("is-conflict");
-                    return (
-                      <td key={d}>
-                        <span className={cls.join(" ")}>{emp.display_code}</span>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {days.map((day) => {
+                const dayIssues = issuesMap.get(day) ?? [];
+                const critical = hasCritical(dayIssues);
+                const weekend = isWeekend(day);
+
+                // compute totals for this day
+                let total = 0;
+                let bedien = 0;
+                let pharm = 0;
+                for (const emp of employees) {
+                  const key = `${day}|${emp.id}`;
+                  if (shiftsByDateEmp.has(key)) {
+                    total++;
+                    if (emp.role === "pharmacist") {
+                      pharm++;
+                    } else {
+                      bedien++;
+                    }
+                  }
+                }
+
+                return (
+                  <tr key={day} className={weekend ? "weekend-row" : undefined}>
+                    <td className={`date-cell${critical ? " day-has-critical" : ""}`}>
+                      {formatDateLabel(day)}
+                      {dayIssues.length > 0 && (
+                        <span style={{ marginLeft: "0.5rem" }}>
+                          <CoverageBadges issues={dayIssues} />
+                        </span>
+                      )}
+                    </td>
+                    {employees.map((emp) => {
+                      const key = `${day}|${emp.id}`;
+                      const s = shiftsByDateEmp.get(key);
+                      const conflict = conflictsByDateEmp.has(key);
+                      if (!s) return <td key={emp.id}></td>;
+                      const cls = ["shift-cell"];
+                      if (s.source === "generated") cls.push("is-generated");
+                      if (conflict) cls.push("is-conflict");
+                      return (
+                        <td key={emp.id}>
+                          <span className={cls.join(" ")}>✓</span>
+                        </td>
+                      );
+                    })}
+                    <td className="totals-cell">{total}</td>
+                    <td className="totals-cell">{bedien}</td>
+                    <td className="totals-cell">{pharm}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

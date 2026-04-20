@@ -919,3 +919,11 @@ thead .piano-th-fixed { z-index: 3; }
 .shift-cell.is-generated {
   opacity: 0.9;
 }
+
+/* Excel-style monthly planning grid */
+.plan-grid { width: 100%; border-collapse: collapse; }
+.plan-grid th, .plan-grid td { border: 1px solid #d7dfd7; padding: 3px 6px; text-align: center; font-size: 0.82rem; }
+.plan-grid .date-cell { text-align: left; white-space: nowrap; min-width: 180px; font-weight: 500; }
+.plan-grid .weekend-row { background: #f1f5f1; color: #6b7a6b; }
+.plan-grid .shift-cell { padding: 1px 4px; border-radius: 3px; display: inline-block; min-width: 18px; }
+.plan-grid .totals-cell { font-weight: 600; background: #eef3ec; }
