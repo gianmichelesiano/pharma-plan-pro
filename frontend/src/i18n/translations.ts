@@ -187,6 +187,15 @@ const translations = {
       errorDeleting: "Errore nell'eliminazione.",
       coursesCount: "corsi",
     },
+    planning: {
+      title: "Pianificazione",
+      description: "Genera il piano mensile",
+      year: "Anno",
+      month: "Mese",
+      generate: "Genera piano",
+      generating: "Generazione...",
+      employee: "Dipendente",
+    },
     piano: {
       title: "Piano mensile",
       description: "Motore di pianificazione con bozza, criticità e suggerimenti applicabili.",
@@ -399,6 +408,15 @@ const translations = {
       errorSaving: "Fehler beim Speichern.",
       errorDeleting: "Fehler beim Löschen.",
       coursesCount: "Schulungen",
+    },
+    planning: {
+      title: "Planung",
+      description: "Monatsplan generieren",
+      year: "Jahr",
+      month: "Monat",
+      generate: "Plan generieren",
+      generating: "Generierung...",
+      employee: "Mitarbeiter",
     },
     piano: {
       title: "Monatsplan",
@@ -613,6 +631,15 @@ const translations = {
       errorDeleting: "Erreur de suppression.",
       coursesCount: "formations",
     },
+    planning: {
+      title: "Planification",
+      description: "Générer le plan mensuel",
+      year: "Année",
+      month: "Mois",
+      generate: "Générer le plan",
+      generating: "Génération...",
+      employee: "Employé",
+    },
     piano: {
       title: "Plan mensuel",
       description: "Moteur de planification avec brouillon, problèmes et suggestions applicables.",
@@ -825,6 +852,15 @@ const translations = {
       errorSaving: "Error saving.",
       errorDeleting: "Error deleting.",
       coursesCount: "courses",
+    },
+    planning: {
+      title: "Planning",
+      description: "Generate the monthly plan",
+      year: "Year",
+      month: "Month",
+      generate: "Generate plan",
+      generating: "Generating...",
+      employee: "Employee",
     },
     piano: {
       title: "Monthly Plan",
