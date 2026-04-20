@@ -97,7 +97,15 @@ export function PianificazionePage() {
   });
 
   const days = useMemo(() => daysInRange(start, end), [start, end]);
-  const employees = useMemo(() => employeesQuery.data ?? [], [employeesQuery.data]);
+  const employees = useMemo(
+    () => [...(employeesQuery.data ?? [])].sort((a, b) => {
+      const ap = a.role === "pharmacist" ? 0 : 1;
+      const bp = b.role === "pharmacist" ? 0 : 1;
+      if (ap !== bp) return ap - bp;
+      return a.first_name.localeCompare(b.first_name);
+    }),
+    [employeesQuery.data],
+  );
   const issuesMap = useMemo(() => issuesByDate(issuesQuery.data ?? []), [issuesQuery.data]);
 
   const shiftsByDateEmp = useMemo(() => {

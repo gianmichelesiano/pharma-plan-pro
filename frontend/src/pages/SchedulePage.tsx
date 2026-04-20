@@ -146,6 +146,15 @@ export function SchedulePage() {
       const key = shift.shift_date;
       map.set(key, [...(map.get(key) ?? []), shift]);
     }
+    for (const [k, arr] of map) {
+      arr.sort((a, b) => {
+        const ap = a.employee?.role === "pharmacist" ? 0 : 1;
+        const bp = b.employee?.role === "pharmacist" ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        return (a.employee?.first_name ?? "").localeCompare(b.employee?.first_name ?? "");
+      });
+      map.set(k, arr);
+    }
     return map;
   }, [shiftsQuery.data]);
 
@@ -191,7 +200,12 @@ export function SchedulePage() {
   const isBusy = createMutation.isPending || deleteMutation.isPending;
 
   const activeEmployees = useMemo(
-    () => [...(employeesQuery.data ?? [])].sort((a, b) => a.first_name.localeCompare(b.first_name)),
+    () => [...(employeesQuery.data ?? [])].sort((a, b) => {
+      const ap = a.role === "pharmacist" ? 0 : 1;
+      const bp = b.role === "pharmacist" ? 0 : 1;
+      if (ap !== bp) return ap - bp;
+      return a.first_name.localeCompare(b.first_name);
+    }),
     [employeesQuery.data],
   );
   const roleLabels = c as unknown as Record<string, string>;
