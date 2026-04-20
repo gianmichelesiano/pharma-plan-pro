@@ -489,11 +489,11 @@ input {
   cursor: grab;
   white-space: nowrap;
 }
-.employee-chip.role-pharmacist   { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.employee-chip.role-pharmacist,
 .employee-chip.role-pha,
 .employee-chip.role-apprentice_pha,
 .employee-chip.role-driver,
-.employee-chip.role-auxiliary    { background: #f0f6ef; color: #173f2f; border-color: rgba(23,63,47,0.15); }
+.employee-chip.role-auxiliary    { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
 
 .schedule-main-card {
   overflow: hidden;
