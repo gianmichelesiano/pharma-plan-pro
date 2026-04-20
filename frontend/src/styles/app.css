@@ -891,3 +891,31 @@ thead .piano-th-fixed { z-index: 3; }
   background: var(--color-sage-100, #e7efe5);
   font-size: 0.85rem;
 }
+
+.coverage-badges {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+.coverage-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: #fde2e2;
+  color: #8a1a1a;
+  border: 1px solid #e8a1a1;
+}
+.day-has-critical {
+  border-left: 3px solid #c43030 !important;
+  background: #fff6f6;
+}
+.shift-cell.is-conflict {
+  background: #fde2e2;
+  color: #8a1a1a;
+}
+.shift-cell.is-generated {
+  opacity: 0.9;
+}
