@@ -42,6 +42,19 @@ export function AvailabilityPage() {
     },
   });
 
+  const standardPatternsQuery = useQuery({
+    queryKey: ["weekly_patterns", "standard"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("weekly_patterns")
+        .select("*")
+        .eq("pattern_type", "standard");
+      if (error) throw error;
+      return data as Pattern[];
+    },
+    enabled: patternType === "accessory",
+  });
+
   const upsertMutation = useMutation({
     mutationFn: async ({
       employee_id,
@@ -71,6 +84,12 @@ export function AvailabilityPage() {
   const map: Record<string, boolean> = {};
   patterns.forEach((p) => {
     map[`${p.employee_id}-${String(p.weekday)}`] = p.active;
+  });
+
+  // Standard days shown as locked in accessory tab
+  const standardMap: Record<string, boolean> = {};
+  (standardPatternsQuery.data ?? []).forEach((p) => {
+    standardMap[`${p.employee_id}-${String(p.weekday)}`] = p.active;
   });
 
   return (
@@ -111,12 +130,14 @@ export function AvailabilityPage() {
                 </td>
                 {WEEKDAYS.map((weekday) => {
                   const key = `${emp.id}-${String(weekday)}`;
+                  const isStandard = patternType === "accessory" && !!standardMap[key];
                   return (
                     <td key={weekday}>
                       <input
                         type="checkbox"
-                        checked={!!map[key]}
-                        disabled={upsertMutation.isPending}
+                        checked={isStandard || !!map[key]}
+                        disabled={isStandard || upsertMutation.isPending}
+                        title={isStandard ? "Già in disponibilità standard" : undefined}
                         onChange={(e) =>
                           upsertMutation.mutate({
                             employee_id: emp.id,
