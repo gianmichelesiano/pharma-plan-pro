@@ -7,9 +7,10 @@ create table coverage_requests (
   status text not null default 'pending'
     check (status in ('pending','proposed','accepted','exhausted','cancelled')),
   timeout_hours smallint not null default 24,
-  created_by uuid references profiles(id),
+  created_by uuid references profiles(id) on delete set null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (absence_id, shift_date)
 );
 
 create index coverage_requests_absence_idx on coverage_requests(absence_id);
@@ -31,11 +32,11 @@ create table coverage_proposals (
   sent_at timestamptz,
   responded_at timestamptz,
   expires_at timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (request_id, employee_id)
 );
 
 create index coverage_proposals_request_idx on coverage_proposals(request_id, attempt_order);
-create index coverage_proposals_token_idx on coverage_proposals(token);
 
 -- RLS: service_role bypasses; authenticated admins can read/write
 alter table coverage_requests enable row level security;
@@ -47,7 +48,14 @@ create policy "admins manage coverage_requests"
     exists (
       select 1 from profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and profiles.admin = true
+    )
+  )
+  with check (
+    exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+        and profiles.admin = true
     )
   );
 
@@ -57,6 +65,13 @@ create policy "admins manage coverage_proposals"
     exists (
       select 1 from profiles
       where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+        and profiles.admin = true
+    )
+  )
+  with check (
+    exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+        and profiles.admin = true
     )
   );
