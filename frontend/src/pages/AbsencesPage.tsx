@@ -105,13 +105,24 @@ export function AbsencesPage() {
   const monthEnd = monthEndDate.toISOString().slice(0, 10);
   const issuesQuery = useCoverageIssues(monthStart, monthEnd);
 
-  const conflictEmpIds = useMemo(() => {
+  const conflictPairs = useMemo(() => {
     const s = new Set<string>();
     for (const i of issuesQuery.data ?? []) {
-      if (i.kind === "conflict" && i.employee_id) s.add(i.employee_id);
+      if (i.kind === "conflict" && i.employee_id) {
+        s.add(`${i.employee_id}|${i.issue_date}`);
+      }
     }
     return s;
   }, [issuesQuery.data]);
+
+  function absenceHasConflict(row: Absence): boolean {
+    const s = new Date(row.start_date + "T00:00:00Z");
+    const e = new Date(row.end_date + "T00:00:00Z");
+    for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
+      if (conflictPairs.has(`${row.employee_id}|${d.toISOString().slice(0, 10)}`)) return true;
+    }
+    return false;
+  }
 
   const initiateMutation = useMutation({
     mutationFn: async ({ absence_id, shift_date }: { absence_id: string; shift_date: string }) => {
@@ -212,7 +223,7 @@ export function AbsencesPage() {
                   <td>{(c as unknown as Record<string, string>)[`absence_status_${row.status}`] ?? row.status}</td>
                   <td>
                     <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                      {isAdmin && conflictEmpIds.has(row.employee_id) && (() => {
+                      {isAdmin && absenceHasConflict(row) && (() => {
                         const openId = openRequestMap.get(row.id);
                         if (openId) {
                           return (

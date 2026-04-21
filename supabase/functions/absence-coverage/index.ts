@@ -87,6 +87,18 @@ async function handleInitiate(
   const role = (absence.employees as unknown as { role: string }).role as string;
   const weekday = weekdayMon0(shift_date);
 
+  // Verify there is actually a coverage gap on this date
+  const { data: issues } = await db.rpc("get_coverage_issues", {
+    p_start: shift_date,
+    p_end: shift_date,
+  });
+  const hasGap = (issues ?? []).some(
+    (i: { kind: string }) => i.kind === "conflict" || i.kind === "shortage"
+  );
+  if (!hasGap) {
+    return json({ ok: true, no_gap: true });
+  }
+
   // Count shifts per employee in the month (for fairness ordering)
   const monthStart = shift_date.slice(0, 7) + "-01";
   const monthEnd = new Date(

@@ -26,7 +26,18 @@ export function CoverageRespondPage() {
         else if (data.result === "accepted") setState("accepted");
         else setState("rejected");
       })
-      .catch(() => setState("error"));
+      .catch(async (err: unknown) => {
+        try {
+          const body = err && typeof err === "object" && "context" in err
+            ? await (err as { context: Response }).context.json()
+            : {};
+          if (body?.error === "token_expired") setState("expired");
+          else if (body?.error === "already_responded") setState("already_responded");
+          else setState("error");
+        } catch {
+          setState("error");
+        }
+      });
   }, []);
 
   const messages: Record<State, string> = {
