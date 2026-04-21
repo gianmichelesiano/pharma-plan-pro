@@ -1,9 +1,13 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
 import { supabase } from "../lib/supabase";
 import type { Tables } from "../lib/database.types";
+import { useAuth } from "../contexts/AuthContext";
+import { useCoverageIssues } from "../lib/coverage";
+import { fetchCoverageRequests, initiateRequest } from "../lib/coverage-requests";
 
 type Employee = Tables<"employees">;
 type Absence = Tables<"absences"> & { employee: Pick<Employee, "first_name" | "last_name"> | null };
@@ -77,6 +81,45 @@ export function AbsencesPage() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["absences"] }),
+  });
+
+  const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  const coverageQuery = useQuery({
+    queryKey: ["coverage_requests_open"],
+    queryFn: fetchCoverageRequests,
+    enabled: isAdmin,
+  });
+
+  const openRequestMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of coverageQuery.data ?? []) {
+      if (r.absence_id) m.set(r.absence_id, r.id);
+    }
+    return m;
+  }, [coverageQuery.data]);
+
+  const monthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
+  const monthEndDate = new Date(selectedYear, selectedMonth + 1, 0);
+  const monthEnd = monthEndDate.toISOString().slice(0, 10);
+  const issuesQuery = useCoverageIssues(monthStart, monthEnd);
+
+  const conflictEmpIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const i of issuesQuery.data ?? []) {
+      if (i.kind === "conflict" && i.employee_id) s.add(i.employee_id);
+    }
+    return s;
+  }, [issuesQuery.data]);
+
+  const initiateMutation = useMutation({
+    mutationFn: async ({ absence_id, shift_date }: { absence_id: string; shift_date: string }) => {
+      return initiateRequest(absence_id, shift_date);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+    },
   });
 
   const filteredAbsences = useMemo(() => {
@@ -167,7 +210,43 @@ export function AbsencesPage() {
                   <td>{formatDateCompact(row.start_date)} → {formatDateCompact(row.end_date)}</td>
                   <td>{(c as unknown as Record<string, string>)[`absence_type_${row.type}`] ?? row.type}</td>
                   <td>{(c as unknown as Record<string, string>)[`absence_status_${row.status}`] ?? row.status}</td>
-                  <td><button type="button" className="secondary" onClick={() => deleteMutation.mutate(row.id)}>{c.delete}</button></td>
+                  <td>
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      {isAdmin && conflictEmpIds.has(row.employee_id) && (() => {
+                        const openId = openRequestMap.get(row.id);
+                        if (openId) {
+                          return (
+                            <button
+                              key="view"
+                              type="button"
+                              className="secondary"
+                              onClick={() => navigate("/coverage-requests")}
+                            >
+                              {t.viewRequest}
+                            </button>
+                          );
+                        }
+                        const days: string[] = [];
+                        const s = new Date(row.start_date + "T00:00:00Z");
+                        const e = new Date(row.end_date + "T00:00:00Z");
+                        for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
+                          days.push(d.toISOString().slice(0, 10));
+                        }
+                        return days.map((day) => (
+                          <button
+                            key={day}
+                            type="button"
+                            className="primary"
+                            disabled={initiateMutation.isPending}
+                            onClick={() => initiateMutation.mutate({ absence_id: row.id, shift_date: day })}
+                          >
+                            {t.initiate} {day.slice(5)}
+                          </button>
+                        ));
+                      })()}
+                      <button type="button" className="secondary" onClick={() => deleteMutation.mutate(row.id)}>{c.delete}</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
