@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
@@ -6,6 +7,7 @@ import type { Tables } from "../lib/database.types";
 
 type Employee = Tables<"employees">;
 type Pattern = Tables<"weekly_patterns">;
+type PatternType = "standard" | "accessory";
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -13,6 +15,7 @@ const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export function AvailabilityPage() {
   const queryClient = useQueryClient();
   const t = useT("availability");
+  const [patternType, setPatternType] = useState<PatternType>("standard");
 
   const employeesQuery = useQuery({
     queryKey: ["employees"],
@@ -28,11 +31,12 @@ export function AvailabilityPage() {
   });
 
   const patternsQuery = useQuery({
-    queryKey: ["weekly_patterns"],
+    queryKey: ["weekly_patterns", patternType],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("weekly_patterns")
-        .select("*");
+        .select("*")
+        .eq("pattern_type", patternType);
       if (error) throw error;
       return data as Pattern[];
     },
@@ -51,20 +55,19 @@ export function AvailabilityPage() {
       const { error } = await supabase
         .from("weekly_patterns")
         .upsert(
-          { employee_id, weekday, active },
-          { onConflict: "employee_id,weekday" }
+          { employee_id, weekday, active, pattern_type: patternType },
+          { onConflict: "employee_id,weekday,pattern_type" }
         );
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["weekly_patterns"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly_patterns", patternType] });
     },
   });
 
   const employees = employeesQuery.data ?? [];
   const patterns = patternsQuery.data ?? [];
 
-  // Build map: "employeeId-weekday" -> active
   const map: Record<string, boolean> = {};
   patterns.forEach((p) => {
     map[`${p.employee_id}-${String(p.weekday)}`] = p.active;
@@ -74,6 +77,21 @@ export function AvailabilityPage() {
     <section className="page">
       <PageHeader title={t.title} description={t.description} />
       <div className="card">
+        <div className="toolbar" style={{ marginBottom: "1rem" }}>
+          <button
+            className={patternType === "standard" ? "primary" : "secondary"}
+            onClick={() => setPatternType("standard")}
+          >
+            {t.tabStandard}
+          </button>
+          <button
+            className={patternType === "accessory" ? "primary" : "secondary"}
+            onClick={() => setPatternType("accessory")}
+          >
+            {t.tabAccessory}
+          </button>
+        </div>
+
         {upsertMutation.error ? <p className="error">{t.errorSaving}</p> : null}
 
         <table className="table availability-table">
