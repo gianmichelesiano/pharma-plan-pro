@@ -93,6 +93,111 @@ export type Database = {
           },
         ]
       }
+      coverage_proposals: {
+        Row: {
+          attempt_order: number
+          created_at: string
+          employee_id: string
+          expires_at: string | null
+          id: string
+          request_id: string
+          responded_at: string | null
+          sent_at: string | null
+          status: string
+          token: string
+        }
+        Insert: {
+          attempt_order: number
+          created_at?: string
+          employee_id: string
+          expires_at?: string | null
+          id?: string
+          request_id: string
+          responded_at?: string | null
+          sent_at?: string | null
+          status?: string
+          token: string
+        }
+        Update: {
+          attempt_order?: number
+          created_at?: string
+          employee_id?: string
+          expires_at?: string | null
+          id?: string
+          request_id?: string
+          responded_at?: string | null
+          sent_at?: string | null
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coverage_proposals_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coverage_proposals_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "coverage_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coverage_requests: {
+        Row: {
+          absence_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["employee_role"]
+          shift_date: string
+          status: string
+          timeout_hours: number
+          updated_at: string
+        }
+        Insert: {
+          absence_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["employee_role"]
+          shift_date: string
+          status?: string
+          timeout_hours?: number
+          updated_at?: string
+        }
+        Update: {
+          absence_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["employee_role"]
+          shift_date?: string
+          status?: string
+          timeout_hours?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coverage_requests_absence_id_fkey"
+            columns: ["absence_id"]
+            isOneToOne: false
+            referencedRelation: "absences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coverage_requests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coverage_rules: {
         Row: {
           id: string
@@ -386,6 +491,7 @@ export type Database = {
           created_at: string
           employee_id: string
           id: string
+          pattern_type: string
           weekday: number
         }
         Insert: {
@@ -393,6 +499,7 @@ export type Database = {
           created_at?: string
           employee_id: string
           id?: string
+          pattern_type?: string
           weekday: number
         }
         Update: {
@@ -400,6 +507,7 @@ export type Database = {
           created_at?: string
           employee_id?: string
           id?: string
+          pattern_type?: string
           weekday?: number
         }
         Relationships: [
@@ -429,6 +537,7 @@ export type Database = {
           severity: string
         }[]
       }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       absence_status: "requested" | "approved" | "rejected"
