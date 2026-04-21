@@ -59,6 +59,7 @@ export function AdminUsersPage() {
                   type="checkbox"
                   checked={r.admin}
                   onChange={(e) => update(r.id, { admin: e.target.checked })}
+                  style={{ accentColor: "#2d7a4f" }}
                 />
               </td>
               <td style={td}>{r.approved ? "Approvato" : "In attesa"}</td>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
@@ -5,8 +6,14 @@ import {
   fetchCoverageRequests,
   sendNext,
   cancelRequest,
+  previewCandidates,
+  manualAssign,
   type CoverageRequest,
+  type CandidatePreview,
 } from "../lib/coverage-requests";
+import { CandidatePreviewModal } from "../components/CandidatePreviewModal";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { useConfirm } from "../hooks/useConfirm";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#94a3b8",
@@ -47,6 +54,11 @@ export function CoverageRequestsPage() {
   const t = useT("coverage");
   const queryClient = useQueryClient();
 
+  type ManualModal = { shift_date: string; candidates: CandidatePreview[]; request_id: string } | null;
+  const [manualModal, setManualModal] = useState<ManualModal>(null);
+  const { confirmState, confirm, cancel } = useConfirm();
+  const [manualLoading, setManualLoading] = useState<string | null>(null);
+
   const requestsQuery = useQuery({
     queryKey: ["coverage_requests_open"],
     queryFn: fetchCoverageRequests,
@@ -66,6 +78,7 @@ export function CoverageRequestsPage() {
   const requests = requestsQuery.data ?? [];
 
   return (
+    <>
     <section className="page">
       <PageHeader title={t.title} description={t.description} />
       <div className="card">
@@ -120,13 +133,27 @@ export function CoverageRequestsPage() {
                         </button>
                       )}
                       {r.status === "exhausted" && (
-                        <span style={{ color: "#ef4444", fontSize: "0.85rem" }}>{t.manualFix}</span>
+                        <button
+                          className="secondary"
+                          disabled={manualLoading === r.id}
+                          onClick={async () => {
+                            setManualLoading(r.id);
+                            try {
+                              const candidates = await previewCandidates(r.absence_id, r.shift_date);
+                              setManualModal({ shift_date: r.shift_date, candidates, request_id: r.id });
+                            } finally {
+                              setManualLoading(null);
+                            }
+                          }}
+                        >
+                          {t.manualFix}
+                        </button>
                       )}
                       {(r.status === "pending" || r.status === "proposed") && (
                         <button
                           className="secondary"
                           disabled={cancelMutation.isPending}
-                          onClick={() => cancelMutation.mutate(r.id)}
+                          onClick={async () => { const ok = await confirm({ title: "Annulla richiesta", message: "Sei sicuro di voler annullare questa richiesta di copertura?", confirmLabel: "Annulla richiesta" }); if (ok) cancelMutation.mutate(r.id); }}
                         >
                           {t.cancel}
                         </button>
@@ -140,5 +167,28 @@ export function CoverageRequestsPage() {
         )}
       </div>
     </section>
+
+    {manualModal && (
+      <CandidatePreviewModal
+        shiftDate={manualModal.shift_date}
+        candidates={manualModal.candidates}
+        confirmLabel=""
+        cancelLabel="Chiudi"
+        subtitleText="Seleziona un dipendente per assegnarlo manualmente come sostituto."
+        noCandidatesText="Nessun dipendente trovato."
+        onAssign={(employee_id) => manualAssign(manualModal.request_id, employee_id)}
+        onClose={() => { setManualModal(null); queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] }); }}
+      />
+    )}
+    {confirmState && (
+      <ConfirmDialog
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+        onConfirm={confirmState.onConfirm}
+        onCancel={cancel}
+      />
+    )}
+    </>
   );
 }

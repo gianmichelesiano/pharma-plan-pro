@@ -38,10 +38,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
+      const p = await fetchProfile(data.session?.user?.id).catch(() => null);
+      setProfile(p);
       setLoading(false);
-      fetchProfile(data.session?.user?.id).then(setProfile).catch(() => setProfile(null));
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {

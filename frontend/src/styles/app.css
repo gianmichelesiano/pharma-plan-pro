@@ -96,12 +96,12 @@ input {
 
 .nav {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.2rem;
 }
 
 .nav-link {
   display: block;
-  padding: 0.85rem 1rem;
+  padding: 0.55rem 1rem;
   border-radius: 0.9rem;
   color: #234234;
   text-decoration: none;
@@ -479,6 +479,7 @@ input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   padding: 0.3rem 0.5rem;
   background: #f0f6ef;
   color: #173f2f;
@@ -488,6 +489,10 @@ input {
   font-weight: 700;
   cursor: grab;
   white-space: nowrap;
+}
+.employee-chip:hover .calendar-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 .employee-chip.role-pharmacist   { background: #e6f2ec; color: #2d7a4f; border-color: #2d7a4f; }
 .employee-chip.role-pha,

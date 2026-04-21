@@ -92,7 +92,10 @@ async function generate(
   if (del.error) throw del.error;
 
   if (rows.length > 0) {
-    const ins = await supabase.from("shifts").insert(rows);
+    const ins = await supabase.from("shifts").upsert(rows, {
+      onConflict: "employee_id,shift_date",
+      ignoreDuplicates: true,
+    });
     if (ins.error) throw ins.error;
   }
 
@@ -124,7 +127,7 @@ Deno.serve(async (req) => {
       status: 200,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = err instanceof Error ? err.message : (err && typeof err === "object" ? JSON.stringify(err) : String(err));
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

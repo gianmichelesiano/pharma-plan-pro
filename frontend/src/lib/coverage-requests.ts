@@ -39,6 +39,25 @@ export async function fetchCoverageRequests(): Promise<CoverageRequest[]> {
   return data as unknown as CoverageRequest[];
 }
 
+export type CandidatePreview = {
+  employee_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  pattern_type: "standard" | "accessory" | "none";
+  shift_count: number;
+  available: boolean;
+  unavailable_reason?: "already_shifted" | "absent";
+};
+
+export async function previewCandidates(absence_id: string, shift_date: string): Promise<CandidatePreview[]> {
+  const { data, error } = await supabase.functions.invoke("absence-coverage", {
+    body: { action: "preview", absence_id, shift_date },
+  });
+  if (error) throw error;
+  return (data as { candidates: CandidatePreview[] }).candidates;
+}
+
 export async function initiateRequest(absence_id: string, shift_date: string) {
   const { data, error } = await supabase.functions.invoke("absence-coverage", {
     body: { action: "initiate", absence_id, shift_date },
@@ -56,11 +75,27 @@ export async function sendNext(request_id: string) {
 }
 
 export async function respondToProposal(token: string, response: "accept" | "reject") {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const functionUrl = `${supabaseUrl}/functions/v1/absence-coverage`;
+  const res = await fetch(functionUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "respond", token, response }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const err = Object.assign(new Error(data?.error ?? "error"), { context: { status: res.status } });
+    throw err;
+  }
+  return data as { ok: boolean; result: "accepted" | "rejected"; error?: string };
+}
+
+export async function manualAssign(request_id: string, employee_id: string) {
   const { data, error } = await supabase.functions.invoke("absence-coverage", {
-    body: { action: "respond", token, response },
+    body: { action: "manual_assign", request_id, employee_id },
   });
   if (error) throw error;
-  return data as { ok: boolean; result: "accepted" | "rejected"; error?: string };
+  return data;
 }
 
 export async function cancelRequest(request_id: string) {

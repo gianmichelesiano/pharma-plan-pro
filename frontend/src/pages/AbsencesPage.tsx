@@ -6,8 +6,10 @@ import { useT } from "../i18n/useT";
 import { supabase } from "../lib/supabase";
 import type { Tables } from "../lib/database.types";
 import { useAuth } from "../contexts/AuthContext";
-import { useCoverageIssues } from "../lib/coverage";
-import { fetchCoverageRequests, initiateRequest } from "../lib/coverage-requests";
+import { initiateRequest, previewCandidates, manualAssign, type CandidatePreview } from "../lib/coverage-requests";
+import { CandidatePreviewModal } from "../components/CandidatePreviewModal";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { useConfirm } from "../hooks/useConfirm";
 
 type Employee = Tables<"employees">;
 type Absence = Tables<"absences"> & { employee: Pick<Employee, "first_name" | "last_name"> | null };
@@ -36,6 +38,11 @@ export function AbsencesPage() {
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const t = useT("absences");
   const c = useT("common");
+
+  type PreviewModal = { absence_id: string; shift_date: string; candidates: CandidatePreview[] } | null;
+  const [previewModal, setPreviewModal] = useState<PreviewModal>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const { confirmState, confirm, cancel } = useConfirm();
 
   const employeesQuery = useQuery({
     queryKey: ["employees"],
@@ -71,58 +78,126 @@ export function AbsencesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["absences"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_issues"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
       setForm({ employee_id: "", start_date: "", end_date: "", type: "VACATION", status: "approved" });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const absence = absencesQuery.data?.find((a) => a.id === id);
+
+      // Cancel any coverage requests for this absence (cascades to proposals)
+      if (absence) {
+        const { data: reqs } = await supabase
+          .from("coverage_requests")
+          .select("id, shift_date")
+          .eq("absence_id", id)
+          .not("status", "eq", "cancelled");
+        if (reqs?.length) {
+          // Find accepted proposals to remove substitute shifts
+          const reqIds = reqs.map((r) => r.id);
+          const { data: accepted } = await supabase
+            .from("coverage_proposals")
+            .select("employee_id, request_id")
+            .in("request_id", reqIds)
+            .eq("status", "accepted");
+          if (accepted?.length) {
+            for (const p of accepted) {
+              const req = reqs.find((r) => r.id === p.request_id);
+              if (req) {
+                await supabase
+                  .from("shifts")
+                  .delete()
+                  .eq("employee_id", p.employee_id)
+                  .eq("shift_date", req.shift_date);
+              }
+            }
+          }
+          await supabase
+            .from("coverage_requests")
+            .update({ status: "cancelled" })
+            .in("id", reqIds);
+        }
+      }
+
       const { error } = await supabase.from("absences").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["absences"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["absences"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_issues"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+    },
   });
 
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
 
-  const coverageQuery = useQuery({
-    queryKey: ["coverage_requests_open"],
-    queryFn: fetchCoverageRequests,
+  const coverageAllQuery = useQuery({
+    queryKey: ["coverage_requests_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("coverage_requests")
+        .select(`
+          id, absence_id, status, shift_date,
+          proposals:coverage_proposals(status, employee:employees(first_name, last_name))
+        `)
+        .not("status", "eq", "cancelled");
+      if (error) throw error;
+      return data as {
+        id: string;
+        absence_id: string;
+        status: string;
+        shift_date: string;
+        proposals: { status: string; employee: { first_name: string; last_name: string } | null }[];
+      }[];
+    },
     enabled: isAdmin,
   });
 
-  const openRequestMap = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const r of coverageQuery.data ?? []) {
-      if (r.absence_id) m.set(r.absence_id, r.id);
-    }
-    return m;
-  }, [coverageQuery.data]);
+  const selectedMonthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
+  const selectedMonthEnd = new Date(selectedYear, selectedMonth + 1, 0).toISOString().slice(0, 10);
 
-  const monthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
-  const monthEndDate = new Date(selectedYear, selectedMonth + 1, 0);
-  const monthEnd = monthEndDate.toISOString().slice(0, 10);
-  const issuesQuery = useCoverageIssues(monthStart, monthEnd);
+  const shiftsInMonthQuery = useQuery({
+    queryKey: ["absences-shifts", selectedMonthStart],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("shifts")
+        .select("employee_id, shift_date")
+        .gte("shift_date", selectedMonthStart)
+        .lte("shift_date", selectedMonthEnd);
+      if (error) throw error;
+      return data as { employee_id: string; shift_date: string }[];
+    },
+    enabled: isAdmin,
+  });
 
-  const conflictPairs = useMemo(() => {
+  const shiftDays = useMemo(() => {
     const s = new Set<string>();
-    for (const i of issuesQuery.data ?? []) {
-      if (i.kind === "conflict" && i.employee_id) {
-        s.add(`${i.employee_id}|${i.issue_date}`);
-      }
+    for (const sh of shiftsInMonthQuery.data ?? []) {
+      s.add(`${sh.employee_id}|${sh.shift_date}`);
     }
     return s;
-  }, [issuesQuery.data]);
+  }, [shiftsInMonthQuery.data]);
 
-  function absenceHasConflict(row: Absence): boolean {
-    const s = new Date(row.start_date + "T00:00:00Z");
-    const e = new Date(row.end_date + "T00:00:00Z");
-    for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
-      if (conflictPairs.has(`${row.employee_id}|${d.toISOString().slice(0, 10)}`)) return true;
+  // key: `${absence_id}|${shift_date}`
+  const openRequestMap = useMemo(() => {
+    const m = new Map<string, { id: string; status: string; substitute: string | null }>();
+    for (const r of coverageAllQuery.data ?? []) {
+      if (!r.absence_id) continue;
+      const accepted = r.proposals?.find((p) => p.status === "accepted");
+      const substitute = accepted?.employee
+        ? `${accepted.employee.first_name} ${accepted.employee.last_name}`
+        : null;
+      m.set(`${r.absence_id}|${r.shift_date}`, { id: r.id, status: r.status, substitute });
     }
-    return false;
-  }
+    return m;
+  }, [coverageAllQuery.data]);
+
 
   const initiateMutation = useMutation({
     mutationFn: async ({ absence_id, shift_date }: { absence_id: string; shift_date: string }) => {
@@ -130,6 +205,7 @@ export function AbsencesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
     },
   });
 
@@ -141,6 +217,7 @@ export function AbsencesPage() {
   }, [absencesQuery.data, selectedMonth, selectedYear]);
 
   return (
+    <>
     <section className="page">
       <PageHeader title={t.title} description={t.description} />
       <div className="grid cards two-columns">
@@ -223,39 +300,60 @@ export function AbsencesPage() {
                   <td>{(c as unknown as Record<string, string>)[`absence_status_${row.status}`] ?? row.status}</td>
                   <td>
                     <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                      {isAdmin && absenceHasConflict(row) && (() => {
-                        const openId = openRequestMap.get(row.id);
-                        if (openId) {
-                          return (
-                            <button
-                              key="view"
-                              type="button"
-                              className="secondary"
-                              onClick={() => navigate("/coverage-requests")}
-                            >
-                              {t.viewRequest}
-                            </button>
-                          );
-                        }
+                      {isAdmin && (() => {
                         const days: string[] = [];
                         const s = new Date(row.start_date + "T00:00:00Z");
                         const e = new Date(row.end_date + "T00:00:00Z");
                         for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
-                          days.push(d.toISOString().slice(0, 10));
+                          const day = d.toISOString().slice(0, 10);
+                          const req = openRequestMap.get(`${row.id}|${day}`);
+                          if (req || shiftDays.has(`${row.employee_id}|${day}`)) {
+                            days.push(day);
+                          }
                         }
-                        return days.map((day) => (
-                          <button
-                            key={day}
-                            type="button"
-                            className="primary"
-                            disabled={initiateMutation.isPending}
-                            onClick={() => initiateMutation.mutate({ absence_id: row.id, shift_date: day })}
-                          >
-                            {t.initiate} {day.slice(5)}
-                          </button>
-                        ));
+                        return days.map((day) => {
+                          const req = openRequestMap.get(`${row.id}|${day}`);
+                          if (req?.status === "accepted") {
+                            return (
+                              <span key={day} style={{ display: "inline-flex", alignItems: "center", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.8rem", fontWeight: 500, background: "#e6f2ec", color: "#2d7a4f", border: "1px solid #2d7a4f" }}>
+                                {t.substituteFound}{req.substitute ? `: ${req.substitute} (${day.slice(5)})` : ` (${day.slice(5)})`}
+                              </span>
+                            );
+                          }
+                          if (req) {
+                            return (
+                              <button
+                                key={day}
+                                type="button"
+                                className="secondary"
+                                onClick={() => navigate("/coverage-requests")}
+                              >
+                                {t.viewRequest} {day.slice(5)}
+                              </button>
+                            );
+                          }
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              className="primary"
+                              disabled={previewLoading}
+                              onClick={async () => {
+                                setPreviewLoading(true);
+                                try {
+                                  const candidates = await previewCandidates(row.id, day);
+                                  setPreviewModal({ absence_id: row.id, shift_date: day, candidates });
+                                } finally {
+                                  setPreviewLoading(false);
+                                }
+                              }}
+                            >
+                              {t.initiate} {day.slice(5)}
+                            </button>
+                          );
+                        });
                       })()}
-                      <button type="button" className="secondary" onClick={() => deleteMutation.mutate(row.id)}>{c.delete}</button>
+                      <button type="button" className="secondary" onClick={async () => { const ok = await confirm({ title: "Elimina assenza", message: "Sei sicuro? Verranno rimossi anche eventuali sostituti associati.", confirmLabel: "Elimina" }); if (ok) deleteMutation.mutate(row.id); }}>{c.delete}</button>
                     </div>
                   </td>
                 </tr>
@@ -265,5 +363,39 @@ export function AbsencesPage() {
         </div>
       </div>
     </section>
+    {previewModal && (
+      <CandidatePreviewModal
+        shiftDate={previewModal.shift_date}
+        candidates={previewModal.candidates}
+        isPending={initiateMutation.isPending}
+        confirmLabel={t.confirmInitiate}
+        cancelLabel={c.cancel ?? "Annulla"}
+        subtitleText={t.previewSubtitle}
+        noCandidatesText={t.noCandidates}
+        onClose={() => setPreviewModal(null)}
+        onConfirm={() =>
+          initiateMutation.mutate(
+            { absence_id: previewModal.absence_id, shift_date: previewModal.shift_date },
+            { onSuccess: () => setPreviewModal(null) }
+          )
+        }
+        onAssign={async (employee_id) => {
+          const res = await initiateRequest(previewModal.absence_id, previewModal.shift_date);
+          await manualAssign(res.request_id, employee_id);
+          queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+          queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
+        }}
+      />
+    )}
+    {confirmState && (
+      <ConfirmDialog
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+        onConfirm={confirmState.onConfirm}
+        onCancel={cancel}
+      />
+    )}
+    </>
   );
 }

@@ -6,6 +6,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { useCoverageIssues, issuesByDate } from "../lib/coverage";
 import { CoverageBadges, hasCritical } from "../components/CoverageBadges";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { useConfirm } from "../hooks/useConfirm";
 import type { Tables } from "../lib/database.types";
 
 type Employee = Tables<"employees">;
@@ -41,6 +43,7 @@ export function SchedulePage() {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [actionError, setActionError] = useState<string | null>(null);
+  const { confirmState, confirm, cancel } = useConfirm();
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const t = useT("schedule");
   const c = useT("common");
@@ -149,10 +152,9 @@ export function SchedulePage() {
     }
     for (const [k, arr] of map) {
       arr.sort((a, b) => {
-        const ap = a.employee?.role === "pharmacist" ? 0 : 1;
-        const bp = b.employee?.role === "pharmacist" ? 0 : 1;
-        if (ap !== bp) return ap - bp;
-        return (a.employee?.first_name ?? "").localeCompare(b.employee?.first_name ?? "");
+        const aName = `${a.employee?.first_name ?? ""} ${a.employee?.last_name ?? ""}`;
+        const bName = `${b.employee?.first_name ?? ""} ${b.employee?.last_name ?? ""}`;
+        return aName.localeCompare(bName, "it", { sensitivity: "base" });
       });
       map.set(k, arr);
     }
@@ -205,10 +207,9 @@ export function SchedulePage() {
 
   const activeEmployees = useMemo(
     () => [...(employeesQuery.data ?? [])].sort((a, b) => {
-      const ap = a.role === "pharmacist" ? 0 : 1;
-      const bp = b.role === "pharmacist" ? 0 : 1;
-      if (ap !== bp) return ap - bp;
-      return a.first_name.localeCompare(b.first_name);
+      const aName = `${a.first_name} ${a.last_name}`;
+      const bName = `${b.first_name} ${b.last_name}`;
+      return aName.localeCompare(bName, "it", { sensitivity: "base" });
     }),
     [employeesQuery.data],
   );
@@ -219,6 +220,7 @@ export function SchedulePage() {
   void monthStart; void monthEnd;
 
   return (
+    <>
     <section className="page">
       <PageHeader title={t.title} description={t.description} />
       <div className="grid cards schedule-layout">
@@ -307,7 +309,7 @@ export function SchedulePage() {
                               <button
                                 type="button"
                                 className="person-remove"
-                                onClick={() => deleteMutation.mutate(shift.id)}
+                                onClick={async () => { const ok = await confirm({ title: "Elimina turno", message: "Sei sicuro di voler eliminare questo turno?", confirmLabel: "Elimina" }); if (ok) deleteMutation.mutate(shift.id); }}
                                 disabled={isBusy}
                               >x</button>
                             )}
@@ -350,5 +352,15 @@ export function SchedulePage() {
         </div>
       </div>
     </section>
+    {confirmState && (
+      <ConfirmDialog
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+        onConfirm={confirmState.onConfirm}
+        onCancel={cancel}
+      />
+    )}
+    </>
   );
 }
