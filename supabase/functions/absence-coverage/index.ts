@@ -109,7 +109,8 @@ async function handleInitiate(
     .from("weekly_patterns")
     .select("employee_id, pattern_type, employees!inner(id, role, active, email)")
     .eq("weekday", weekday)
-    .eq("active", true);
+    .eq("active", true)
+    .eq("employees.active", true);
 
   // Employees already shifted on shift_date
   const { data: existingShifts } = await db
@@ -227,7 +228,7 @@ async function handleSendNextInner(
     return;
   }
 
-  const expiresAt = new Date(Date.now() + request.timeout_hours * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + (request.timeout_hours ?? 24) * 60 * 60 * 1000).toISOString();
 
   await db
     .from("coverage_proposals")
@@ -294,10 +295,14 @@ async function handleRespond(
   const now = new Date().toISOString();
 
   if (response === "accept") {
-    await db
+    const { data: updated } = await db
       .from("coverage_proposals")
       .update({ status: "accepted", responded_at: now })
-      .eq("id", proposal.id);
+      .eq("id", proposal.id)
+      .eq("status", "sent")
+      .select("id")
+      .maybeSingle();
+    if (!updated) return json({ error: "already_responded" }, 409);
 
     const { data: request } = await db
       .from("coverage_requests")
@@ -315,15 +320,25 @@ async function handleRespond(
       });
     }
 
-    await notifyAdmin(db, "accepted", request?.shift_date ?? "", proposal.employee_id, appUrl);
+    const { data: acceptedEmp } = await db
+      .from("employees")
+      .select("first_name, last_name")
+      .eq("id", proposal.employee_id)
+      .single();
+    const empName = acceptedEmp ? `${acceptedEmp.first_name} ${acceptedEmp.last_name}` : proposal.employee_id;
+    await notifyAdmin(db, "accepted", request?.shift_date ?? "", empName, appUrl);
     return json({ ok: true, result: "accepted" });
   }
 
   // reject
-  await db
+  const { data: updatedReject } = await db
     .from("coverage_proposals")
     .update({ status: "rejected", responded_at: now })
-    .eq("id", proposal.id);
+    .eq("id", proposal.id)
+    .eq("status", "sent")
+    .select("id")
+    .maybeSingle();
+  if (!updatedReject) return json({ error: "already_responded" }, 409);
 
   await handleSendNextInner(db, proposal.request_id, appUrl);
   return json({ ok: true, result: "rejected" });
