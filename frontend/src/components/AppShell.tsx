@@ -4,7 +4,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { LANG_FLAGS, LANG_NAMES, nextLang } from "../i18n/translations";
 import { useT } from "../i18n/useT";
 
-type NavKey = "dashboard" | "rules" | "employees" | "availability" | "absences" | "training" | "schedule" | "piano" | "users";
+type NavKey = "dashboard" | "rules" | "employees" | "availability" | "absences" | "training" | "schedule" | "piano" | "users" | "coverageRequests";
 type NavItem = { to: string; key: NavKey; adminOnly?: boolean };
 
 const navRoutes: NavItem[] = [
@@ -15,6 +15,7 @@ const navRoutes: NavItem[] = [
   { to: "/employees", key: "employees", adminOnly: true },
   { to: "/availability", key: "availability", adminOnly: true },
   { to: "/absences", key: "absences", adminOnly: true },
+  { to: "/coverage-requests", key: "coverageRequests", adminOnly: true },
   { to: "/training", key: "training", adminOnly: true },
   { to: "/admin/users", key: "users", adminOnly: true },
 ];

@@ -16,12 +16,15 @@ import { PianificazionePage } from "../pages/PianificazionePage";
 import { EmailTestPage } from "../pages/EmailTestPage";
 import { AdminUsersPage } from "../pages/AdminUsersPage";
 import { PendingApprovalPage } from "../pages/PendingApprovalPage";
+import { CoverageRequestsPage } from "../pages/CoverageRequestsPage";
+import { CoverageRespondPage } from "../pages/CoverageRespondPage";
 
 export const router = createBrowserRouter(
   [
     { path: "/login", element: <LoginPage /> },
     { path: "/register", element: <RegisterPage /> },
     { path: "/pending", element: <PendingApprovalPage /> },
+    { path: "/coverage/respond", element: <CoverageRespondPage /> },
     {
       path: "/",
       element: <ProtectedRoute><AppShell /></ProtectedRoute>,
@@ -38,6 +41,7 @@ export const router = createBrowserRouter(
             { path: "rules", element: <RulesPage /> },
             { path: "training", element: <TrainingPage /> },
             { path: "email-test", element: <EmailTestPage /> },
+            { path: "coverage-requests", element: <CoverageRequestsPage /> },
           ],
         },
         { path: "admin/users", element: <AdminRoute><AdminUsersPage /></AdminRoute> },
