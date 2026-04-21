@@ -38,7 +38,7 @@ async function generate(
   const { start, end } = monthBounds(year, month);
   const [empRes, patRes, absRes] = await Promise.all([
     supabase.from("employees").select("id, active").eq("active", true),
-    supabase.from("weekly_patterns").select("employee_id, weekday, active").eq("active", true),
+    supabase.from("weekly_patterns").select("employee_id, weekday, active").eq("active", true).eq("pattern_type", "standard"),
     supabase
       .from("absences")
       .select("employee_id, start_date, end_date, status")
