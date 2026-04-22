@@ -4,6 +4,7 @@ import { useT } from "../i18n/useT";
 import { supabase } from "../lib/supabase";
 import { useMemo } from "react";
 import type { Tables } from "../lib/database.types";
+import { issuesByDate, useCoverageIssues } from "../lib/coverage";
 
 function getMonthRange() {
   const now = new Date();
@@ -38,6 +39,8 @@ function formatDayLabel(iso: string) {
 type ShiftRow = {
   id: string;
   shift_date: string;
+  employee_id: string;
+  source?: string | null;
   employee: { first_name: string; last_name: string; display_code: string; role: string } | null;
 };
 type WeeklyPatternNoteRow = Pick<Tables<"weekly_patterns">, "employee_id" | "weekday" | "special_note"> & {
@@ -51,9 +54,14 @@ function weekdayMon0(iso: string): number {
   return (d + 6) % 7;
 }
 
+function hasCritical(issues: Array<{ severity?: string }> = []): boolean {
+  return issues.some((issue) => issue.severity === "critical");
+}
+
 export function DashboardPage() {
   const t = useT("dashboard");
   const c = useT("common");
+  const coverageT = useT("coverage");
   const { start: monthStart, end: monthEnd } = getMonthRange();
   const { start: weekStart, end: weekEnd, days } = getWeekRange();
   const today = new Date().toISOString().slice(0, 10);
@@ -101,12 +109,25 @@ export function DashboardPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("shifts")
-        .select("id, shift_date, employee:employees(first_name, last_name, display_code, role)")
+        .select("id, employee_id, shift_date, source, employee:employees(first_name, last_name, display_code, role)")
         .gte("shift_date", weekStart)
         .lte("shift_date", weekEnd)
         .order("shift_date");
       if (error) throw error;
       return data as unknown as ShiftRow[];
+    },
+  });
+  const weekAbsencesQuery = useQuery({
+    queryKey: ["dashboard-week-absences", weekStart, weekEnd],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("absences")
+        .select("employee_id, start_date, end_date, status")
+        .lte("start_date", weekEnd)
+        .gte("end_date", weekStart)
+        .not("status", "eq", "rejected");
+      if (error) throw error;
+      return data as Pick<Tables<"absences">, "employee_id" | "start_date" | "end_date" | "status">[];
     },
   });
   const patternNotesQuery = useQuery({
@@ -136,6 +157,8 @@ export function DashboardPage() {
   });
 
   const dayLabels = (c as unknown as Record<string, string[]>).weekdaysShort ?? ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
+  const issuesQuery = useCoverageIssues(weekStart, weekEnd);
+  const issuesMap = useMemo(() => issuesByDate(issuesQuery.data ?? []), [issuesQuery.data]);
 
   const shiftsByDay = useMemo(() => {
     const map = new Map<string, ShiftRow[]>();
@@ -145,6 +168,18 @@ export function DashboardPage() {
     }
     return map;
   }, [weekShiftsQuery.data, days]);
+  const absenceSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const row of weekAbsencesQuery.data ?? []) {
+      const start = new Date(`${row.start_date}T12:00:00`);
+      const end = new Date(`${row.end_date}T12:00:00`);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        if (day >= weekStart && day <= weekEnd) set.add(`${day}|${row.employee_id}`);
+      }
+    }
+    return set;
+  }, [weekAbsencesQuery.data, weekStart, weekEnd]);
   const plannedNotesToday = useMemo(() => {
     const weekday = weekdayMon0(today);
     const items: string[] = [];
@@ -255,6 +290,7 @@ export function DashboardPage() {
               return (
                 <div
                   key={day}
+                  className={hasCritical(issuesMap.get(day) ?? []) ? "day-has-critical" : ""}
                   style={{
                     background: isToday ? "#f0fdf4" : "#fafaf9",
                     border: isToday ? "2px solid #22c55e" : "1px solid #e5e7eb",
@@ -280,17 +316,30 @@ export function DashboardPage() {
                           return aName.localeCompare(bName, "it", { sensitivity: "base" });
                         })
                         .map((s) => {
-                          const role = s.employee?.role === "pharmacist" ? "pharmacist" : "operator";
+                          const isAbsent = absenceSet.has(`${s.shift_date}|${s.employee_id}`);
                           const fullName = s.employee ? `${s.employee.first_name} ${s.employee.last_name}` : "?";
                           return (
                             <div
                               key={s.id}
-                              className={`employee-chip role-${role}`}
-                              style={{ justifyContent: "center", cursor: "default" }}
+                              className={[
+                                "calendar-person",
+                                s.employee?.role === "pharmacist" ? "pharmacist" : "operator",
+                                s.source === "substitute" ? "is-substitute" : "",
+                                isAbsent ? "is-absence" : "",
+                              ].filter(Boolean).join(" ")}
+                              style={{ cursor: "default" }}
                             >
-                              {s.employee?.display_code ?? "—"}
+                              <span>{s.employee?.display_code ?? "—"}</span>
+                              {isAbsent ? (
+                                <span
+                                  className="calendar-person-absence-badge"
+                                  title={coverageT.absentEmployee}
+                                  aria-label={coverageT.absentEmployee}
+                                />
+                              ) : null}
                               <div className="calendar-tooltip">
                                 <strong>{fullName}</strong>
+                                {isAbsent ? <span>{coverageT.absentEmployee}</span> : null}
                               </div>
                             </div>
                           );

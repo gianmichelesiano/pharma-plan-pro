@@ -24,6 +24,18 @@ function normalizeAppUrl(value: string | undefined): string {
   return raw.replace(/\/+$/, "");
 }
 
+async function sendEmailOrThrow(
+  db: ReturnType<typeof createClient>,
+  body: { to: string | string[]; subject: string; html?: string; text?: string; from?: string },
+) {
+  const { data, error } = await db.functions.invoke("send-email", { body });
+  if (error) throw new Error(error.message);
+  const payload = data as { ok?: boolean; error?: string } | null;
+  if (payload?.ok === false || payload?.error) {
+    throw new Error(payload.error ?? "send-email failed");
+  }
+}
+
 type InitiateAction = { action: "initiate"; absence_id: string; shift_date: string; manual?: boolean };
 type PreviewAction = { action: "preview"; absence_id: string; shift_date: string };
 type SendNextAction = { action: "send_next"; request_id: string };
@@ -412,13 +424,21 @@ async function handleSendNextInner(
     expiresAt,
   });
 
-  await db.functions.invoke("send-email", {
-    body: {
+  try {
+    await sendEmailOrThrow(db, {
       to: emp.email,
       subject: `Sostituzione turno — ${weekday} ${dateFormatted} (${absentName})`,
       html,
-    },
-  });
+    });
+  } catch (err) {
+    await db
+      .from("coverage_proposals")
+      .update({ status: "pending", sent_at: null, expires_at: null })
+      .eq("id", proposal.id);
+    await db.from("coverage_requests").update({ status: "pending" }).eq("id", request_id);
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`email send failed: ${msg}`);
+  }
 }
 
 async function handleRespond(
@@ -592,13 +612,21 @@ async function handleManualAssign(
       expiresAt,
     });
 
-    await db.functions.invoke("send-email", {
-      body: {
+    try {
+      await sendEmailOrThrow(db, {
         to: emp.email,
         subject: `Sostituzione turno — ${weekday} ${dateFormatted} (${absentName})`,
         html,
-      },
-    });
+      });
+    } catch (err) {
+      await db
+        .from("coverage_proposals")
+        .update({ status: "pending", sent_at: null, expires_at: null })
+        .eq("id", selectedProposal.id);
+      await db.from("coverage_requests").update({ status: "pending" }).eq("id", request_id);
+      const msg = err instanceof Error ? err.message : String(err);
+      return json({ error: `email send failed: ${msg}` }, 500);
+    }
   }
 
   return json({ ok: true, status: "proposed" });
@@ -620,11 +648,13 @@ async function notifyAdmin(
     accepted: `Turno ${shiftDate} coperto da ${detail}`,
   };
 
-  await db.functions.invoke("send-email", {
-    body: {
+  try {
+    await sendEmailOrThrow(db, {
       to: adminEmail,
       subject: subjects[event] ?? `Coverage update ${shiftDate}`,
       text: `Evento: ${event} — data: ${shiftDate} — dettaglio: ${detail}`,
-    },
-  });
+    });
+  } catch {
+    // Do not fail the main workflow if the admin notification cannot be sent.
+  }
 }
