@@ -24,47 +24,53 @@ export function CoverageRespondPage() {
     respondToProposal(token, response)
       .then((data) => {
         if (cancelled) return;
-        if (data.error === "token_expired") setState("expired");
-        else if (data.error === "already_responded") setState("already_responded");
-        else if (data.result === "accepted") setState("accepted");
-        else setState("rejected");
+        const payload = (data ?? {}) as { error?: string; result?: string };
+        if (payload.error === "token_expired") setState("expired");
+        else if (payload.error === "already_responded") setState("already_responded");
+        else if (payload.result === "accepted") setState("accepted");
+        else if (payload.result === "rejected") setState("rejected");
+        else setState("error");
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        const status = err && typeof err === "object" && "context" in err
-          ? (err as { context: { status: number } }).context.status
-          : 0;
+        const maybe = err as { context?: { status?: number } } | null;
+        const status = maybe?.context?.status ?? 0;
         if (status === 410) setState("expired");
         else if (status === 409) setState("already_responded");
         else setState("error");
       });
 
     return () => { cancelled = true; };
-  }, []);
+  }, [searchParams]);
 
   const messages: Record<State, string> = {
     loading: "...",
-    accepted: t.respondAccepted,
-    rejected: t.respondRejected,
-    expired: t.respondExpired,
-    already_responded: t.respondAlreadyUsed,
-    error: t.respondError,
+    accepted: t.respondAccepted || "Request accepted.",
+    rejected: t.respondRejected || "Response saved.",
+    expired: t.respondExpired || "Link expired.",
+    already_responded: t.respondAlreadyUsed || "Response already submitted.",
+    error: t.respondError || "Error while processing the request.",
   };
 
   return (
     <div
       style={{
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        gap: "0.75rem",
         minHeight: "100vh",
         fontFamily: "system-ui, sans-serif",
         fontSize: "1.25rem",
         textAlign: "center",
         padding: "2rem",
+        background: "#f7faf7",
+        color: "#16392c",
       }}
     >
-      <p>{messages[state]}</p>
+      <h2 style={{ margin: 0, fontSize: "1.2rem" }}>Copertura turno</h2>
+      <p style={{ margin: 0 }}>{messages[state] || "—"}</p>
     </div>
   );
 }

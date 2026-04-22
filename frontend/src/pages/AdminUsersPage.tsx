@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useT } from "../i18n/useT";
 import { supabase } from "../lib/supabase";
 
 type Row = {
@@ -9,6 +10,7 @@ type Row = {
 };
 
 export function AdminUsersPage() {
+  const t = useT("users");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,23 +33,23 @@ export function AdminUsersPage() {
 
   async function update(id: string, patch: Partial<Pick<Row, "admin" | "approved">>) {
     const { error } = await supabase.from("profiles").update(patch).eq("id", id);
-    if (error) return alert(error.message);
+    if (error) return alert(`${t.errorSaving}: ${error.message}`);
     load();
   }
 
-  if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
+  if (loading) return <div style={{ padding: 24 }}>{t.loadingUsers}</div>;
 
   return (
     <div style={{ padding: "1rem" }}>
-      <h1>Gestione utenti</h1>
+      <h1>{t.title}</h1>
       {error && <p style={{ color: "crimson" }}>{error}</p>}
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            <th style={th}>Email</th>
-            <th style={th}>Admin</th>
-            <th style={th}>Stato</th>
-            <th style={th}>Azioni</th>
+            <th style={th}>{t.emailHeader}</th>
+            <th style={th}>{t.adminHeader}</th>
+            <th style={th}>{t.statusHeader}</th>
+            <th style={th}>{t.actionsHeader}</th>
           </tr>
         </thead>
         <tbody>
@@ -62,12 +64,12 @@ export function AdminUsersPage() {
                   style={{ accentColor: "#2d7a4f" }}
                 />
               </td>
-              <td style={td}>{r.approved ? "Approvato" : "In attesa"}</td>
+              <td style={td}>{r.approved ? t.approved : t.pending}</td>
               <td style={td}>
                 {!r.approved ? (
-                  <button onClick={() => update(r.id, { approved: true })}>Approva</button>
+                  <button onClick={() => update(r.id, { approved: true })}>{t.approve}</button>
                 ) : (
-                  <button onClick={() => update(r.id, { approved: false })}>Revoca</button>
+                  <button onClick={() => update(r.id, { approved: false })}>{t.revoke}</button>
                 )}
               </td>
             </tr>

@@ -3,6 +3,7 @@ import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
 import { supabase } from "../lib/supabase";
 import { useMemo } from "react";
+import type { Tables } from "../lib/database.types";
 
 function getMonthRange() {
   const now = new Date();
@@ -29,11 +30,6 @@ function getWeekRange() {
   };
 }
 
-
-function initials(first: string, last: string) {
-  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
-}
-
 function formatDayLabel(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}.${m}.${y.slice(-2)}`;
@@ -42,8 +38,18 @@ function formatDayLabel(iso: string) {
 type ShiftRow = {
   id: string;
   shift_date: string;
-  employee: { first_name: string; last_name: string; role: string } | null;
+  employee: { first_name: string; last_name: string; display_code: string; role: string } | null;
 };
+type WeeklyPatternNoteRow = Pick<Tables<"weekly_patterns">, "employee_id" | "weekday" | "special_note"> & {
+  employee?: { display_code: string | null } | null;
+};
+type DailyPlanningNoteRow = Pick<Tables<"daily_notes">, "note_date" | "text" | "title">;
+const PLANNING_NOTE_TITLE = "planning_note";
+
+function weekdayMon0(iso: string): number {
+  const d = new Date(`${iso}T00:00:00Z`).getUTCDay();
+  return (d + 6) % 7;
+}
 
 export function DashboardPage() {
   const t = useT("dashboard");
@@ -95,12 +101,37 @@ export function DashboardPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("shifts")
-        .select("id, shift_date, employee:employees(first_name, last_name, role)")
+        .select("id, shift_date, employee:employees(first_name, last_name, display_code, role)")
         .gte("shift_date", weekStart)
         .lte("shift_date", weekEnd)
         .order("shift_date");
       if (error) throw error;
       return data as unknown as ShiftRow[];
+    },
+  });
+  const patternNotesQuery = useQuery({
+    queryKey: ["dashboard-pattern-notes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("weekly_patterns")
+        .select("employee_id, weekday, special_note, employee:employees(display_code)")
+        .eq("active", true)
+        .not("special_note", "is", null);
+      if (error) throw error;
+      return data as WeeklyPatternNoteRow[];
+    },
+  });
+  const dailyNoteQuery = useQuery({
+    queryKey: ["dashboard-daily-note", weekStart, weekEnd],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("daily_notes")
+        .select("note_date, text, title")
+        .eq("title", PLANNING_NOTE_TITLE)
+        .gte("note_date", weekStart)
+        .lte("note_date", weekEnd);
+      if (error) throw error;
+      return data as DailyPlanningNoteRow[];
     },
   });
 
@@ -114,6 +145,50 @@ export function DashboardPage() {
     }
     return map;
   }, [weekShiftsQuery.data, days]);
+  const plannedNotesToday = useMemo(() => {
+    const weekday = weekdayMon0(today);
+    const items: string[] = [];
+    const seen = new Set<string>();
+    for (const row of patternNotesQuery.data ?? []) {
+      const note = row.special_note?.trim();
+      if (!note || row.weekday !== weekday) continue;
+      const code = row.employee?.display_code?.trim() || "—";
+      const key = `${code}|${note}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push(`${code} ${note}`);
+    }
+    return items;
+  }, [patternNotesQuery.data, today]);
+  const plannedNotesByDay = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const day of days) {
+      const weekday = weekdayMon0(day);
+      const items: string[] = [];
+      const seen = new Set<string>();
+      for (const row of patternNotesQuery.data ?? []) {
+        const note = row.special_note?.trim();
+        if (!note || row.weekday !== weekday) continue;
+        const code = row.employee?.display_code?.trim() || "—";
+        const label = `${code} ${note}`;
+        if (seen.has(label)) continue;
+        seen.add(label);
+        items.push(label);
+      }
+      map.set(day, items);
+    }
+    return map;
+  }, [days, patternNotesQuery.data]);
+  const dailyNotesByDay = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of dailyNoteQuery.data ?? []) {
+      const text = row.text?.trim();
+      if (!text) continue;
+      map.set(row.note_date, text);
+    }
+    return map;
+  }, [dailyNoteQuery.data]);
+  const dailyNoteToday = dailyNotesByDay.get(today) ?? "";
 
   return (
     <section className="page">
@@ -140,6 +215,26 @@ export function DashboardPage() {
           </h2>
           <p>{t.emergenciesText}</p>
         </article>
+        <article className="card">
+          <p className="eyebrow">{(t as unknown as Record<string, string>).notesTodayTitle}</p>
+          <div className="dashboard-notes-list">
+            {plannedNotesToday.length > 0 ? (
+              <div className="calendar-note-badge dashboard-note-badge">
+                <strong>{(t as unknown as Record<string, string>).plannedNotesLabel}</strong>
+                <span>{plannedNotesToday.join(" · ")}</span>
+              </div>
+            ) : null}
+            {dailyNoteToday ? (
+              <div className="calendar-note-badge dashboard-note-badge">
+                <strong>{(t as unknown as Record<string, string>).dailyNotesLabel}</strong>
+                <span>{dailyNoteToday}</span>
+              </div>
+            ) : null}
+            {plannedNotesToday.length === 0 && !dailyNoteToday ? (
+              <p className="dashboard-notes-empty">{(t as unknown as Record<string, string>).noNotesToday}</p>
+            ) : null}
+          </div>
+        </article>
       </div>
 
       <div className="card" style={{ marginTop: "1.5rem" }}>
@@ -151,6 +246,12 @@ export function DashboardPage() {
             {days.map((day, i) => {
               const isToday = day === today;
               const dayShifts = shiftsByDay.get(day) ?? [];
+              const notePreview = [
+                ...(plannedNotesByDay.get(day) ?? []),
+                dailyNotesByDay.get(day) ?? "",
+              ]
+                .filter(Boolean)
+                .join(" · ");
               return (
                 <div
                   key={day}
@@ -187,7 +288,7 @@ export function DashboardPage() {
                               className={`employee-chip role-${role}`}
                               style={{ justifyContent: "center", cursor: "default" }}
                             >
-                              {s.employee ? initials(s.employee.first_name, s.employee.last_name) : "?"}
+                              {s.employee?.display_code ?? "—"}
                               <div className="calendar-tooltip">
                                 <strong>{fullName}</strong>
                               </div>
@@ -195,6 +296,12 @@ export function DashboardPage() {
                           );
                         })
                     )}
+                    {notePreview ? (
+                      <div className="calendar-note-badge dashboard-note-badge" title={notePreview}>
+                        <strong>{(t as unknown as Record<string, string>).noteBadge}</strong>
+                        <span>{notePreview}</span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );

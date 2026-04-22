@@ -18,7 +18,13 @@ function weekdayMon0(iso: string): number {
   return (d + 6) % 7;
 }
 
-type InitiateAction = { action: "initiate"; absence_id: string; shift_date: string };
+function normalizeAppUrl(value: string | undefined): string {
+  const fallback = "https://pharma-plan.speats.ch";
+  const raw = (value ?? fallback).trim() || fallback;
+  return raw.replace(/\/+$/, "");
+}
+
+type InitiateAction = { action: "initiate"; absence_id: string; shift_date: string; manual?: boolean };
 type PreviewAction = { action: "preview"; absence_id: string; shift_date: string };
 type SendNextAction = { action: "send_next"; request_id: string };
 type RespondAction = { action: "respond"; token: string; response: "accept" | "reject" };
@@ -32,7 +38,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const appUrl = Deno.env.get("APP_URL") ?? "http://localhost:5173";
+  const appUrl = normalizeAppUrl(Deno.env.get("APP_URL"));
 
   const db = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false },
@@ -172,18 +178,17 @@ async function handleInitiate(
   body: InitiateAction,
   appUrl: string,
 ) {
-  const { absence_id, shift_date } = body;
+  const { absence_id, shift_date, manual = false } = body;
 
-  // Check if open request already exists
+  // Check if request already exists for this absence/day (any status)
   const { data: existing } = await db
     .from("coverage_requests")
     .select("id, status")
     .eq("absence_id", absence_id)
     .eq("shift_date", shift_date)
-    .in("status", ["pending", "proposed"])
     .maybeSingle();
 
-  if (existing) {
+  if (existing && (existing.status === "pending" || existing.status === "proposed")) {
     return json({ ok: true, request_id: existing.id, already_open: true });
   }
 
@@ -201,36 +206,54 @@ async function handleInitiate(
   if ("error" in result) return json({ error: result.error }, result.status);
   const { candidates, role } = result;
 
-  // Create coverage_request
-  const { data: request, error: reqErr } = await db
-    .from("coverage_requests")
-    .insert({ absence_id, shift_date, role, status: "pending" })
-    .select("id")
-    .single();
-  if (reqErr || !request) return json({ error: reqErr?.message ?? "insert failed" }, 500);
+  let requestId: string;
+  if (existing) {
+    requestId = existing.id;
+    const { error: reqUpdErr } = await db
+      .from("coverage_requests")
+      .update({ role, status: "pending" })
+      .eq("id", requestId);
+    if (reqUpdErr) return json({ error: reqUpdErr.message }, 500);
+
+    const { error: delPropErr } = await db
+      .from("coverage_proposals")
+      .delete()
+      .eq("request_id", requestId);
+    if (delPropErr) return json({ error: delPropErr.message }, 500);
+  } else {
+    const { data: request, error: reqErr } = await db
+      .from("coverage_requests")
+      .insert({ absence_id, shift_date, role, status: "pending" })
+      .select("id")
+      .single();
+    if (reqErr || !request) return json({ error: reqErr?.message ?? "insert failed" }, 500);
+    requestId = request.id;
+  }
 
   if (candidates.length === 0) {
     await db
       .from("coverage_requests")
       .update({ status: "exhausted" })
-      .eq("id", request.id);
+      .eq("id", requestId);
     await notifyAdmin(db, "no_candidates", shift_date, role, appUrl);
-    return json({ ok: true, request_id: request.id, exhausted: true });
+    return json({ ok: true, request_id: requestId, exhausted: true });
   }
 
   // Insert proposals ordered by priority
   const proposals = candidates.map((c, i) => ({
-    request_id: request.id,
+    request_id: requestId,
     employee_id: c.employee_id,
     attempt_order: i + 1,
     token: crypto.randomUUID(),
   }));
   await db.from("coverage_proposals").insert(proposals);
 
-  // Send to first candidate
-  await handleSendNextInner(db, request.id, appUrl);
+  // Auto mode: send to first candidate. Manual mode: wait for explicit manual assignment.
+  if (!manual) {
+    await handleSendNextInner(db, requestId, appUrl);
+  }
 
-  return json({ ok: true, request_id: request.id });
+  return json({ ok: true, request_id: requestId, manual });
 }
 
 async function handleSendNext(
@@ -255,6 +278,68 @@ const ABSENCE_TYPE_IT: Record<string, string> = {
 function formatDateIT(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+function renderCoverageEmail(params: {
+  firstName: string;
+  absentName: string;
+  absenceReason: string;
+  weekday: string;
+  dateFormatted: string;
+  acceptUrl: string;
+  rejectUrl: string;
+  expiresAt: string;
+}) {
+  const {
+    firstName,
+    absentName,
+    absenceReason,
+    weekday,
+    dateFormatted,
+    acceptUrl,
+    rejectUrl,
+    expiresAt,
+  } = params;
+
+  return `
+    <div style="margin:0;padding:24px;background:#f4f8f2;font-family:Arial,sans-serif;color:#173f2f">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #dbe8d9;border-radius:22px;overflow:hidden;box-shadow:0 12px 32px rgba(23,63,47,0.08)">
+        <div style="padding:28px 32px;background:linear-gradient(135deg,#eaf3e8 0%,#f8fbf7 100%);border-bottom:1px solid #dbe8d9">
+          <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6b7f72;font-weight:700">Richiesta sostituzione</div>
+          <h1 style="margin:10px 0 0;font-size:28px;line-height:1.15;color:#173f2f">Ciao ${firstName},</h1>
+          <p style="margin:12px 0 0;font-size:16px;line-height:1.6;color:#325444">
+            Sei disponibile a coprire il turno di <strong>${absentName}</strong>?
+          </p>
+        </div>
+
+        <div style="padding:28px 32px">
+          <div style="display:grid;gap:12px">
+            <div style="display:flex;justify-content:space-between;gap:16px;padding:14px 16px;background:#f8fbf7;border:1px solid #e3eee1;border-radius:14px">
+              <span style="color:#6b7f72">Giorno</span>
+              <strong style="color:#173f2f;text-align:right">${weekday} ${dateFormatted}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:16px;padding:14px 16px;background:#f8fbf7;border:1px solid #e3eee1;border-radius:14px">
+              <span style="color:#6b7f72">Motivo assenza</span>
+              <strong style="color:#173f2f;text-align:right">${absenceReason}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:16px;padding:14px 16px;background:#f8fbf7;border:1px solid #e3eee1;border-radius:14px">
+              <span style="color:#6b7f72">Dipendente assente</span>
+              <strong style="color:#173f2f;text-align:right">${absentName}</strong>
+            </div>
+          </div>
+
+          <div style="margin-top:28px;text-align:center">
+            <a href="${acceptUrl}" style="display:inline-block;margin:0 8px 12px 0;padding:14px 26px;border-radius:14px;background:#174e39;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;box-shadow:0 8px 18px rgba(23,78,57,0.18)">Accetto</a>
+            <a href="${rejectUrl}" style="display:inline-block;margin:0 0 12px 8px;padding:14px 26px;border-radius:14px;background:#dce8d7;color:#173f2f;text-decoration:none;font-weight:700;font-size:16px;border:1px solid #bfd3bb">Rifiuto</a>
+          </div>
+
+          <p style="margin:18px 0 0;font-size:13px;line-height:1.5;color:#6b7f72;text-align:center">
+            Link valido fino a <strong>${new Date(expiresAt).toLocaleString("it-IT")}</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 async function handleSendNextInner(
@@ -316,21 +401,16 @@ async function handleSendNextInner(
 
   const acceptUrl = `${appUrl}/coverage/respond?token=${proposal.token}&response=accept`;
   const rejectUrl = `${appUrl}/coverage/respond?token=${proposal.token}&response=reject`;
-
-  const html = `
-    <p>Ciao ${emp.first_name},</p>
-    <p>Sei disponibile a coprire il turno di <strong>${absentName}</strong>?</p>
-    <table style="border-collapse:collapse;margin:1rem 0;font-size:0.95rem">
-      <tr><td style="padding:4px 12px 4px 0;color:#666">Giorno</td><td><strong>${weekday} ${dateFormatted}</strong></td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#666">Motivo assenza</td><td><strong>${absenceReason}</strong></td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#666">Dipendente assente</td><td><strong>${absentName}</strong></td></tr>
-    </table>
-    <p>
-      <a href="${acceptUrl}" style="background:#22c55e;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-right:12px">✓ Accetto</a>
-      <a href="${rejectUrl}" style="background:#ef4444;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none">✗ Rifiuto</a>
-    </p>
-    <p><small>Link valido fino a: ${new Date(expiresAt).toLocaleString("it-IT")}</small></p>
-  `;
+  const html = renderCoverageEmail({
+    firstName: emp.first_name,
+    absentName,
+    absenceReason,
+    weekday,
+    dateFormatted,
+    acceptUrl,
+    rejectUrl,
+    expiresAt,
+  });
 
   await db.functions.invoke("send-email", {
     body: {
@@ -389,7 +469,7 @@ async function handleRespond(
       await db.from("shifts").insert({
         employee_id: proposal.employee_id,
         shift_date: request.shift_date,
-        source: "manual",
+        source: "substitute",
       });
     }
 
@@ -426,31 +506,102 @@ async function handleManualAssign(
 
   const { data: request } = await db
     .from("coverage_requests")
-    .select("id, shift_date, role")
+    .select("id, shift_date, role, status, timeout_hours, absence_id")
     .eq("id", request_id)
     .single();
   if (!request) return json({ error: "request not found" }, 404);
+  if (request.status === "accepted" || request.status === "cancelled") {
+    return json({ error: "request not open" }, 409);
+  }
 
-  // Insert shift (ignore if already exists)
-  await db.from("shifts").upsert(
-    { employee_id, shift_date: request.shift_date, source: "manual" },
-    { onConflict: "employee_id,shift_date", ignoreDuplicates: true }
-  );
-
-  // Mark request accepted
-  await db.from("coverage_requests").update({ status: "accepted" }).eq("id", request_id);
-
-  // Cancel any pending/sent proposals
+  // Cancel any still-open proposals, then activate only the selected one.
   await db.from("coverage_proposals")
     .update({ status: "rejected" })
     .eq("request_id", request_id)
     .in("status", ["pending", "sent"]);
 
-  const { data: emp } = await db.from("employees").select("first_name, last_name").eq("id", employee_id).single();
-  const empName = emp ? `${emp.first_name} ${emp.last_name}` : employee_id;
-  await notifyAdmin(db, "accepted", request.shift_date, empName, appUrl);
+  const { data: existingProposal } = await db
+    .from("coverage_proposals")
+    .select("id")
+    .eq("request_id", request_id)
+    .eq("employee_id", employee_id)
+    .maybeSingle();
 
-  return json({ ok: true });
+  const proposalId = existingProposal?.id;
+  if (!proposalId) {
+    const { error: insErr } = await db.from("coverage_proposals").insert({
+      request_id,
+      employee_id,
+      attempt_order: 999,
+      token: crypto.randomUUID(),
+      status: "pending",
+    });
+    if (insErr) return json({ error: insErr.message }, 500);
+  } else {
+    const { error: updErr } = await db
+      .from("coverage_proposals")
+      .update({ status: "pending", sent_at: null, responded_at: null, expires_at: null })
+      .eq("id", proposalId);
+    if (updErr) return json({ error: updErr.message }, 500);
+  }
+
+  const { data: selectedProposal } = await db
+    .from("coverage_proposals")
+    .select("id, token")
+    .eq("request_id", request_id)
+    .eq("employee_id", employee_id)
+    .single();
+  if (!selectedProposal) return json({ error: "proposal not found" }, 500);
+
+  const expiresAt = new Date(Date.now() + (request.timeout_hours ?? 24) * 60 * 60 * 1000).toISOString();
+  await db
+    .from("coverage_proposals")
+    .update({ status: "sent", sent_at: new Date().toISOString(), expires_at: expiresAt })
+    .eq("id", selectedProposal.id);
+
+  await db.from("coverage_requests").update({ status: "proposed" }).eq("id", request_id);
+
+  const [empRes, absenceRes] = await Promise.all([
+    db.from("employees").select("first_name, last_name, email").eq("id", employee_id).single(),
+    db.from("absences")
+      .select("type, employee:employees(first_name, last_name)")
+      .eq("id", request.absence_id)
+      .single(),
+  ]);
+
+  const emp = empRes.data;
+  if (emp?.email) {
+    const absence = absenceRes.data;
+    const absentName = absence?.employee
+      ? `${(absence.employee as { first_name: string; last_name: string }).first_name} ${(absence.employee as { first_name: string; last_name: string }).last_name}`
+      : "—";
+    const absenceReason = ABSENCE_TYPE_IT[absence?.type ?? ""] ?? (absence?.type ?? "—");
+    const weekday = WEEKDAYS_IT[weekdayMon0(request.shift_date)];
+    const dateFormatted = formatDateIT(request.shift_date);
+
+    const acceptUrl = `${appUrl}/coverage/respond?token=${selectedProposal.token}&response=accept`;
+    const rejectUrl = `${appUrl}/coverage/respond?token=${selectedProposal.token}&response=reject`;
+    const html = renderCoverageEmail({
+      firstName: emp.first_name,
+      absentName,
+      absenceReason,
+      weekday,
+      dateFormatted,
+      acceptUrl,
+      rejectUrl,
+      expiresAt,
+    });
+
+    await db.functions.invoke("send-email", {
+      body: {
+        to: emp.email,
+        subject: `Sostituzione turno — ${weekday} ${dateFormatted} (${absentName})`,
+        html,
+      },
+    });
+  }
+
+  return json({ ok: true, status: "proposed" });
 }
 
 async function notifyAdmin(

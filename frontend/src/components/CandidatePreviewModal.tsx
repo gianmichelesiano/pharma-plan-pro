@@ -9,6 +9,7 @@ type Props = {
   cancelLabel: string;
   subtitleText: string;
   noCandidatesText: string;
+  actionHelpText?: string;
   onConfirm?: () => void;
   onAssign?: (employee_id: string) => Promise<void>;
   onClose: () => void;
@@ -22,6 +23,7 @@ export function CandidatePreviewModal({
   cancelLabel,
   subtitleText,
   noCandidatesText,
+  actionHelpText,
   onConfirm,
   onAssign,
   onClose,
@@ -114,6 +116,9 @@ export function CandidatePreviewModal({
             </button>
           )}
         </div>
+        {actionHelpText ? (
+          <p style={{ margin: "0.75rem 0 0", color: "#666", fontSize: "0.78rem" }}>{actionHelpText}</p>
+        ) : null}
       </div>
     </div>
   );

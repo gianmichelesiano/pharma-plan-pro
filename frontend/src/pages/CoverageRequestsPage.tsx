@@ -35,9 +35,15 @@ function isExpired(request: CoverageRequest): boolean {
 }
 
 function currentCandidate(request: CoverageRequest): string {
+  const accepted = request.proposals.find((p) => p.status === "accepted");
+  if (accepted?.employee) {
+    return `${accepted.employee.first_name} ${accepted.employee.last_name}`;
+  }
   const sent = request.proposals.find((p) => p.status === "sent");
-  if (!sent?.employee) return "—";
-  return `${sent.employee.first_name} ${sent.employee.last_name}`;
+  if (sent?.employee) {
+    return `${sent.employee.first_name} ${sent.employee.last_name}`;
+  }
+  return "—";
 }
 
 function expiresLabel(request: CoverageRequest): string {
@@ -52,27 +58,40 @@ function expiresLabel(request: CoverageRequest): string {
 
 export function CoverageRequestsPage() {
   const t = useT("coverage");
+  const c = useT("common");
   const queryClient = useQueryClient();
+  const today = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
   type ManualModal = { shift_date: string; candidates: CandidatePreview[]; request_id: string } | null;
   const [manualModal, setManualModal] = useState<ManualModal>(null);
   const { confirmState, confirm, cancel } = useConfirm();
   const [manualLoading, setManualLoading] = useState<string | null>(null);
 
+  const monthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
+  const monthEnd = new Date(Date.UTC(selectedYear, selectedMonth + 1, 0)).toISOString().slice(0, 10);
+
   const requestsQuery = useQuery({
-    queryKey: ["coverage_requests_open"],
-    queryFn: fetchCoverageRequests,
+    queryKey: ["coverage_requests_all", monthStart, monthEnd],
+    queryFn: () => fetchCoverageRequests({ start: monthStart, end: monthEnd, includeClosed: true }),
     refetchInterval: 60_000,
   });
 
   const sendNextMutation = useMutation({
     mutationFn: (request_id: string) => sendNext(request_id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
+    },
   });
 
   const cancelMutation = useMutation({
     mutationFn: (request_id: string) => cancelRequest(request_id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
+    },
   });
 
   const requests = requestsQuery.data ?? [];
@@ -82,6 +101,22 @@ export function CoverageRequestsPage() {
     <section className="page">
       <PageHeader title={t.title} description={t.description} />
       <div className="card">
+        <div className="toolbar">
+          <label className="field">
+            <span>{c.month}</span>
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))}>
+              {c.months.map((label, i) => <option key={label} value={i}>{label}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>{c.year}</span>
+            <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}>
+              {Array.from({ length: 5 }, (_, offset) => today.getFullYear() - 2 + offset).map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </label>
+        </div>
         {requestsQuery.isLoading ? <p>Caricamento...</p> : null}
         {!requestsQuery.isLoading && requests.length === 0 ? (
           <p>{t.noRequests}</p>
@@ -174,10 +209,15 @@ export function CoverageRequestsPage() {
         candidates={manualModal.candidates}
         confirmLabel=""
         cancelLabel="Chiudi"
-        subtitleText="Seleziona un dipendente per assegnarlo manualmente come sostituto."
+        subtitleText="Seleziona un dipendente e invia la richiesta: resterà in attesa della sua approvazione."
         noCandidatesText="Nessun dipendente trovato."
+        actionHelpText="Assegna: invia richiesta al dipendente selezionato (in attesa approvazione)."
         onAssign={(employee_id) => manualAssign(manualModal.request_id, employee_id)}
-        onClose={() => { setManualModal(null); queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] }); }}
+        onClose={() => {
+          setManualModal(null);
+          queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+          queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
+        }}
       />
     )}
     {confirmState && (

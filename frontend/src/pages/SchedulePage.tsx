@@ -12,6 +12,11 @@ import type { Tables } from "../lib/database.types";
 
 type Employee = Tables<"employees">;
 type Shift = Tables<"shifts"> & { employee: Pick<Employee, "first_name" | "last_name" | "display_code" | "role"> | null; source?: string };
+type WeeklyPatternNoteRow = Pick<Tables<"weekly_patterns">, "employee_id" | "weekday" | "special_note"> & {
+  employee?: { display_code: string | null } | null;
+};
+type DailyPlanningNoteRow = Pick<Tables<"daily_notes">, "note_date" | "text" | "title">;
+const PLANNING_NOTE_TITLE = "planning_note";
 
 function formatDateCompact(value: string) {
   const [year, month, day] = value.split("-");
@@ -25,6 +30,11 @@ function isoWeek(dateStr: string): number {
   startOfWeek1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
   const diff = d.getTime() - startOfWeek1.getTime();
   return Math.floor(diff / (7 * 24 * 60 * 60 * 1000)) + 1;
+}
+
+function weekdayMon0(iso: string): number {
+  const d = new Date(`${iso}T00:00:00Z`).getUTCDay();
+  return (d + 6) % 7;
 }
 
 type DragPayload =
@@ -46,6 +56,8 @@ export function SchedulePage() {
   const { confirmState, confirm, cancel } = useConfirm();
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const t = useT("schedule");
+  const p = useT("planning");
+  const coverageT = useT("coverage");
   const c = useT("common");
 
   const monthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
@@ -107,6 +119,48 @@ export function SchedulePage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["shifts"] }); queryClient.invalidateQueries({ queryKey: ["coverage_issues"] }); setActionError(null); },
     onError: (e) => setActionError(e.message),
   });
+  const clearMonthPlanMutation = useMutation({
+    mutationFn: async () => {
+      const { error: covErr } = await supabase
+        .from("coverage_requests")
+        .delete()
+        .gte("shift_date", monthStart)
+        .lte("shift_date", monthEnd);
+      if (covErr) throw covErr;
+
+      const { error } = await supabase
+        .from("shifts")
+        .delete()
+        .gte("shift_date", monthStart)
+        .lte("shift_date", monthEnd);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_issues"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
+      setActionError(null);
+    },
+    onError: (e) => setActionError(e.message),
+  });
+  const generateMonthPlanMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("planning-engine", {
+        body: { action: "generate", year: selectedYear, month: selectedMonth + 1 },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_issues"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+      queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
+      setActionError(null);
+    },
+    onError: (e) => setActionError(e.message),
+  });
 
   const calendarWeeks = useMemo(() => {
     const firstDay = new Date(selectedYear, selectedMonth, 1, 12, 0, 0);
@@ -143,6 +197,56 @@ export function SchedulePage() {
       ),
     [issuesQuery.data],
   );
+  const absencesQuery = useQuery({
+    queryKey: ["absences", calStart, calEnd],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("absences")
+        .select("employee_id, start_date, end_date, status")
+        .lte("start_date", calEnd)
+        .gte("end_date", calStart)
+        .not("status", "eq", "rejected");
+      if (error) throw error;
+      return data as Pick<Tables<"absences">, "employee_id" | "start_date" | "end_date" | "status">[];
+    },
+  });
+  const patternNotesQuery = useQuery({
+    queryKey: ["schedule-pattern-notes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("weekly_patterns")
+        .select("employee_id, weekday, special_note, employee:employees(display_code)")
+        .eq("active", true)
+        .not("special_note", "is", null);
+      if (error) throw error;
+      return data as WeeklyPatternNoteRow[];
+    },
+  });
+  const dailyNotesQuery = useQuery({
+    queryKey: ["schedule-daily-notes", calStart, calEnd],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("daily_notes")
+        .select("note_date, text, title")
+        .eq("title", PLANNING_NOTE_TITLE)
+        .gte("note_date", calStart)
+        .lte("note_date", calEnd);
+      if (error) throw error;
+      return data as DailyPlanningNoteRow[];
+    },
+  });
+  const absenceSet = useMemo(() => {
+    const s = new Set<string>();
+    for (const row of absencesQuery.data ?? []) {
+      const start = new Date(`${row.start_date}T12:00:00`);
+      const end = new Date(`${row.end_date}T12:00:00`);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        if (day >= calStart && day <= calEnd) s.add(`${day}|${row.employee_id}`);
+      }
+    }
+    return s;
+  }, [absencesQuery.data, calStart, calEnd]);
 
   const shiftsByDate = useMemo(() => {
     const map = new Map<string, Shift[]>();
@@ -160,6 +264,31 @@ export function SchedulePage() {
     }
     return map;
   }, [shiftsQuery.data]);
+  const plannedNotesByWeekday = useMemo(() => {
+    const map = new Map<number, string[]>();
+    const seenByDay = new Map<number, Set<string>>();
+    for (const row of patternNotesQuery.data ?? []) {
+      const note = row.special_note?.trim();
+      if (!note) continue;
+      const code = row.employee?.display_code?.trim() || "—";
+      const label = `${code} ${note}`;
+      const seen = seenByDay.get(row.weekday) ?? new Set<string>();
+      if (seen.has(label)) continue;
+      seen.add(label);
+      seenByDay.set(row.weekday, seen);
+      map.set(row.weekday, [...(map.get(row.weekday) ?? []), label]);
+    }
+    return map;
+  }, [patternNotesQuery.data]);
+  const dailyNotesByDate = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of dailyNotesQuery.data ?? []) {
+      const text = row.text?.trim();
+      if (!text) continue;
+      map.set(row.note_date, text);
+    }
+    return map;
+  }, [dailyNotesQuery.data]);
 
   const weekList = useMemo(() => {
     const seen = new Set<number>();
@@ -203,7 +332,18 @@ export function SchedulePage() {
   };
 
   const { isAdmin } = useAuth();
-  const isBusy = createMutation.isPending || deleteMutation.isPending;
+  const hasGeneratedPlan = useMemo(
+    () =>
+      (shiftsQuery.data ?? []).some(
+        (s) => s.source === "generated" && s.shift_date >= monthStart && s.shift_date <= monthEnd,
+      ),
+    [shiftsQuery.data, monthStart, monthEnd],
+  );
+  const isBusy =
+    createMutation.isPending ||
+    deleteMutation.isPending ||
+    clearMonthPlanMutation.isPending ||
+    generateMonthPlanMutation.isPending;
 
   const activeEmployees = useMemo(
     () => [...(employeesQuery.data ?? [])].sort((a, b) => {
@@ -238,7 +378,35 @@ export function SchedulePage() {
                 {Array.from({ length: 5 }, (_, offset) => today.getFullYear() - 2 + offset).map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </label>
+            {isAdmin && !hasGeneratedPlan && (
+              <button
+                type="button"
+                className="primary"
+                disabled={generateMonthPlanMutation.isPending}
+                onClick={() => generateMonthPlanMutation.mutate()}
+              >
+                {generateMonthPlanMutation.isPending ? p.generating : p.generate}
+              </button>
+            )}
+            {isAdmin && hasGeneratedPlan && (
+              <button
+                type="button"
+                className="secondary"
+                disabled={clearMonthPlanMutation.isPending}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Cancella piano",
+                    message: "Questa azione cancellerà il piano del mese selezionato e tutti i relativi shift. Vuoi continuare?",
+                    confirmLabel: "Cancella piano",
+                  });
+                  if (ok) clearMonthPlanMutation.mutate();
+                }}
+              >
+                {clearMonthPlanMutation.isPending ? "Cancellazione..." : "Cancella piano"}
+              </button>
+            )}
           </div>
+          <p className="schedule-range">{formatDateCompact(monthStart)} - {formatDateCompact(monthEnd)}</p>
           <div className="schedule-week-list">
             <button
               className={["schedule-week-item", selectedWeek === null ? "active" : ""].join(" ").trim()}
@@ -272,6 +440,11 @@ export function SchedulePage() {
                   const dayDate = new Date(`${day}T12:00:00`);
                   const isOutOfMonth = dayDate.getMonth() !== selectedMonth;
                   const dayShifts = shiftsByDate.get(day) ?? [];
+                  const noteParts = [
+                    ...(plannedNotesByWeekday.get(weekdayMon0(day)) ?? []),
+                    dailyNotesByDate.get(day) ?? "",
+                  ].filter(Boolean);
+                  const notePreview = noteParts.join(" · ");
                   return (
                     <div key={day} className={`calendar-cell${isOutOfMonth ? " out-of-month" : ""}${hasCritical(issuesMap.get(day) ?? []) ? " day-has-critical" : ""}`}>
                       <div className="calendar-cell-head">
@@ -284,13 +457,18 @@ export function SchedulePage() {
                         onDrop={(e) => handleDrop(e, day)}
                       >
                         {dayShifts.map((shift) => (
+                          (() => {
+                            const isAbsent = absenceSet.has(`${shift.shift_date}|${shift.employee_id}`);
+                            return (
                           <div
                             key={shift.id}
                             className={[
                               "calendar-person",
                               shift.employee?.role === "pharmacist" ? "pharmacist" : "operator",
                               shift.source === "generated" ? "is-generated" : "",
+                              shift.source === "substitute" ? "is-substitute" : "",
                               conflictSet.has(`${shift.shift_date}|${shift.employee_id}`) ? "is-conflict" : "",
+                              isAbsent ? "is-absence" : "",
                             ].filter(Boolean).join(" ")}
                             draggable
                             onDragStart={(e) => {
@@ -301,9 +479,17 @@ export function SchedulePage() {
                             }}
                           >
                             <span>{shift.employee?.display_code ?? "—"}</span>
+                            {isAbsent && (
+                              <span
+                                className="calendar-person-absence-badge"
+                                title={coverageT.absentEmployee}
+                                aria-label={coverageT.absentEmployee}
+                              />
+                            )}
                             <div className="calendar-tooltip">
                               <strong>{shift.employee ? `${shift.employee.first_name} ${shift.employee.last_name}` : "—"}</strong>
                               <span>{t.roleLabel}: {getRoleLabel(shift.employee?.role)}</span>
+                              {isAbsent && <span>{coverageT.absentEmployee}</span>}
                             </div>
                             {isAdmin && (
                               <button
@@ -314,12 +500,23 @@ export function SchedulePage() {
                               >x</button>
                             )}
                           </div>
+                            );
+                          })()
                         ))}
+                        {notePreview ? (
+                          <div className="calendar-note-badge" title={notePreview}>
+                            <strong>{(t as unknown as Record<string, string>).notesBadge}</strong>
+                            <span>{notePreview}</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   );
                 }),
               )}
+            </div>
+            <div className="calendar-header calendar-footer">
+              {(c.weekdays as string[]).map((wd) => <div key={`f-${wd}`} className="calendar-header-cell">{wd.slice(0, 3)}</div>)}
             </div>
           </div>
         </div>

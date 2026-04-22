@@ -16,6 +16,7 @@ type EmployeeForm = {
   role: Employee["role"];
   weekly_hours_pct: string;
   active: boolean;
+  bediener: boolean;
 };
 
 const initialForm: EmployeeForm = {
@@ -27,15 +28,25 @@ const initialForm: EmployeeForm = {
   role: "pha",
   weekly_hours_pct: "100",
   active: true,
+  bediener: true,
 };
 
 const ROLES: Employee["role"][] = ["pharmacist", "pha", "apprentice_pha", "driver", "auxiliary"];
+
+function formatSaveError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("bediener") && (m.includes("column") || m.includes("schema cache") || m.includes("42703") || m.includes("pgrst"))) {
+    return "Il database remoto non ha ancora la colonna 'bediener'. Applica le migrazioni Supabase (supabase db push).";
+  }
+  return message;
+}
 
 export function EmployeesPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<EmployeeForm>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"active" | "all">("active");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const t = useT("employees");
   const c = useT("common");
 
@@ -55,7 +66,8 @@ export function EmployeesPage() {
       const { error } = await supabase.from("employees").insert(payload);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["employees"] }); resetForm(); },
+    onSuccess: () => { setSaveError(null); queryClient.invalidateQueries({ queryKey: ["employees"] }); resetForm(); },
+    onError: (err: Error) => { setSaveError(formatSaveError(err.message)); },
   });
 
   const updateMutation = useMutation({
@@ -63,11 +75,13 @@ export function EmployeesPage() {
       const { error } = await supabase.from("employees").update(payload).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["employees"] }); resetForm(); },
+    onSuccess: () => { setSaveError(null); queryClient.invalidateQueries({ queryKey: ["employees"] }); resetForm(); },
+    onError: (err: Error) => { setSaveError(formatSaveError(err.message)); },
   });
 
   const submitForm = (e: FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
     const payload = {
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
@@ -77,6 +91,7 @@ export function EmployeesPage() {
       role: form.role,
       weekly_hours_pct: Number(form.weekly_hours_pct),
       active: form.active,
+      bediener: form.bediener,
       employment_status: "active" as const,
     };
     if (editingId === null) { createMutation.mutate(payload); return; }
@@ -94,6 +109,7 @@ export function EmployeesPage() {
       role: emp.role,
       weekly_hours_pct: String(emp.weekly_hours_pct ?? 100),
       active: emp.active,
+      bediener: (emp as any).bediener ?? true,
     });
   };
 
@@ -140,6 +156,10 @@ export function EmployeesPage() {
               <input type="number" min="0" max="100" value={form.weekly_hours_pct} onChange={(e) => setForm((f) => ({ ...f, weekly_hours_pct: e.target.value }))} required />
             </label>
             <label className="checkbox-row">
+              <input type="checkbox" checked={form.bediener} onChange={(e) => setForm((f) => ({ ...f, bediener: e.target.checked }))} />
+              <span>{t.bedienerLabel}</span>
+            </label>
+            <label className="checkbox-row">
               <input type="checkbox" checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} />
               <span>{t.activeLabel}</span>
             </label>
@@ -149,6 +169,7 @@ export function EmployeesPage() {
               </button>
               {editingId !== null ? <button type="button" className="secondary" onClick={resetForm}>{c.cancel}</button> : null}
             </div>
+            {saveError ? <p style={{ color: "crimson", marginTop: "0.5rem" }}>{t.errorSaving}: {saveError}</p> : null}
           </form>
         </div>
 
@@ -172,6 +193,7 @@ export function EmployeesPage() {
                 <th>Tel</th>
                 <th>{t.roleHeader}</th>
                 <th>%</th>
+                <th>{t.bedienerHeader}</th>
                 <th>{t.statusHeader}</th>
                 <th>{t.actionsHeader}</th>
               </tr>
@@ -184,6 +206,7 @@ export function EmployeesPage() {
                   <td>{(emp as any).phone ?? "—"}</td>
                   <td>{(c as unknown as Record<string, string>)[`role_${emp.role}`] ?? emp.role}</td>
                   <td>{emp.weekly_hours_pct ?? "—"}</td>
+                  <td>{((emp as any).bediener ?? true) ? "true" : "false"}</td>
                   <td><span className={emp.active ? "status-badge active" : "status-badge inactive"}>{emp.active ? c.active : c.inactive}</span></td>
                   <td><div className="table-actions"><button type="button" className="secondary" onClick={() => startEdit(emp)}>{c.modify}</button></div></td>
                 </tr>

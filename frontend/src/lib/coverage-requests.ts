@@ -25,16 +25,33 @@ export type CoverageProposal = {
   employee: { first_name: string; last_name: string } | null;
 };
 
-export async function fetchCoverageRequests(): Promise<CoverageRequest[]> {
-  const { data, error } = await supabase
+type FetchCoverageRequestsOptions = {
+  start?: string;
+  end?: string;
+  includeClosed?: boolean;
+};
+
+export async function fetchCoverageRequests(options?: FetchCoverageRequestsOptions): Promise<CoverageRequest[]> {
+  let query = supabase
     .from("coverage_requests")
     .select(`
       *,
       absence:absences(employee:employees(first_name, last_name)),
       proposals:coverage_proposals(*, employee:employees(first_name, last_name))
     `)
-    .not("status", "in", '("accepted","cancelled")')
     .order("shift_date");
+
+  if (!options?.includeClosed) {
+    query = query.not("status", "in", '("accepted","cancelled")');
+  }
+  if (options?.start) {
+    query = query.gte("shift_date", options.start);
+  }
+  if (options?.end) {
+    query = query.lte("shift_date", options.end);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data as unknown as CoverageRequest[];
 }
@@ -58,9 +75,9 @@ export async function previewCandidates(absence_id: string, shift_date: string):
   return (data as { candidates: CandidatePreview[] }).candidates;
 }
 
-export async function initiateRequest(absence_id: string, shift_date: string) {
+export async function initiateRequest(absence_id: string, shift_date: string, options?: { manual?: boolean }) {
   const { data, error } = await supabase.functions.invoke("absence-coverage", {
-    body: { action: "initiate", absence_id, shift_date },
+    body: { action: "initiate", absence_id, shift_date, manual: options?.manual ?? false },
   });
   if (error) throw error;
   return data as { ok: boolean; request_id: string; already_open?: boolean; exhausted?: boolean };

@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       absences: {
@@ -296,6 +271,7 @@ export type Database = {
           access_level: Database["public"]["Enums"]["access_level"]
           active: boolean
           approved: boolean
+          bediener: boolean
           created_at: string
           display_code: string
           email: string | null
@@ -314,6 +290,7 @@ export type Database = {
           access_level?: Database["public"]["Enums"]["access_level"]
           active?: boolean
           approved?: boolean
+          bediener?: boolean
           created_at?: string
           display_code: string
           email?: string | null
@@ -332,6 +309,7 @@ export type Database = {
           access_level?: Database["public"]["Enums"]["access_level"]
           active?: boolean
           approved?: boolean
+          bediener?: boolean
           created_at?: string
           display_code?: string
           email?: string | null
@@ -492,6 +470,7 @@ export type Database = {
           employee_id: string
           id: string
           pattern_type: string
+          special_note: string | null
           weekday: number
         }
         Insert: {
@@ -500,6 +479,7 @@ export type Database = {
           employee_id: string
           id?: string
           pattern_type?: string
+          special_note?: string | null
           weekday: number
         }
         Update: {
@@ -508,6 +488,7 @@ export type Database = {
           employee_id?: string
           id?: string
           pattern_type?: string
+          special_note?: string | null
           weekday?: number
         }
         Relationships: [
@@ -681,9 +662,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       absence_status: ["requested", "approved", "rejected"],

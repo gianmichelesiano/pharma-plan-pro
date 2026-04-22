@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 type GenerateAction = { action: "generate"; year: number; month: number };
+const DEFAULT_PATTERN_TYPE = "standard" as const;
 
 function monthBounds(year: number, month: number): { start: string; end: string } {
   const s = new Date(Date.UTC(year, month - 1, 1));
@@ -38,7 +39,11 @@ async function generate(
   const { start, end } = monthBounds(year, month);
   const [empRes, patRes, absRes] = await Promise.all([
     supabase.from("employees").select("id, active").eq("active", true),
-    supabase.from("weekly_patterns").select("employee_id, weekday, active").eq("active", true).eq("pattern_type", "standard"),
+    supabase
+      .from("weekly_patterns")
+      .select("employee_id, weekday, active, pattern_type")
+      .eq("active", true)
+      .eq("pattern_type", DEFAULT_PATTERN_TYPE),
     supabase
       .from("absences")
       .select("employee_id, start_date, end_date, status")
@@ -52,6 +57,8 @@ async function generate(
 
   const worksOn = new Map<string, Set<number>>();
   for (const p of patRes.data ?? []) {
+    // Safety guard: generation must use standard availability only.
+    if ((p.pattern_type as string) !== DEFAULT_PATTERN_TYPE) continue;
     const set = worksOn.get(p.employee_id as string) ?? new Set<number>();
     set.add(p.weekday as number);
     worksOn.set(p.employee_id as string, set);
@@ -99,7 +106,7 @@ async function generate(
     if (ins.error) throw ins.error;
   }
 
-  return { generated: rows.length, start, end };
+  return { generated: rows.length, start, end, mode: "standard_only" };
 }
 
 Deno.serve(async (req) => {

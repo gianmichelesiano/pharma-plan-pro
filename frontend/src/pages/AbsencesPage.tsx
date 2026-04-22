@@ -37,11 +37,13 @@ export function AbsencesPage() {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const t = useT("absences");
+  const cov = useT("coverage");
   const c = useT("common");
 
   type PreviewModal = { absence_id: string; shift_date: string; candidates: CandidatePreview[] } | null;
   const [previewModal, setPreviewModal] = useState<PreviewModal>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [coverageError, setCoverageError] = useState<string | null>(null);
   const { confirmState, confirm, cancel } = useConfirm();
 
   const employeesQuery = useQuery({
@@ -159,31 +161,6 @@ export function AbsencesPage() {
     enabled: isAdmin,
   });
 
-  const selectedMonthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
-  const selectedMonthEnd = new Date(selectedYear, selectedMonth + 1, 0).toISOString().slice(0, 10);
-
-  const shiftsInMonthQuery = useQuery({
-    queryKey: ["absences-shifts", selectedMonthStart],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("shifts")
-        .select("employee_id, shift_date")
-        .gte("shift_date", selectedMonthStart)
-        .lte("shift_date", selectedMonthEnd);
-      if (error) throw error;
-      return data as { employee_id: string; shift_date: string }[];
-    },
-    enabled: isAdmin,
-  });
-
-  const shiftDays = useMemo(() => {
-    const s = new Set<string>();
-    for (const sh of shiftsInMonthQuery.data ?? []) {
-      s.add(`${sh.employee_id}|${sh.shift_date}`);
-    }
-    return s;
-  }, [shiftsInMonthQuery.data]);
-
   // key: `${absence_id}|${shift_date}`
   const openRequestMap = useMemo(() => {
     const m = new Map<string, { id: string; status: string; substitute: string | null }>();
@@ -215,6 +192,48 @@ export function AbsencesPage() {
     const end = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
     return rows.filter((row) => intersectsRange(row.start_date, row.end_date, start, end));
   }, [absencesQuery.data, selectedMonth, selectedYear]);
+
+  function formatCoverageError(err: unknown): string {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes("unauthorized") || msg.includes("401")) {
+      return "Sessione non autorizzata per la funzione sostituzioni. Fai logout/login e riprova.";
+    }
+    return "Errore durante la richiesta sostituto. Riprova.";
+  }
+
+  const shiftsRange = useMemo(() => {
+    if (!filteredAbsences.length) return null;
+    let min = filteredAbsences[0].start_date;
+    let max = filteredAbsences[0].end_date;
+    for (const row of filteredAbsences) {
+      if (row.start_date < min) min = row.start_date;
+      if (row.end_date > max) max = row.end_date;
+    }
+    return { min, max };
+  }, [filteredAbsences]);
+
+  const shiftsForVisibleAbsencesQuery = useQuery({
+    queryKey: ["absences-shifts-visible", shiftsRange?.min, shiftsRange?.max],
+    queryFn: async () => {
+      if (!shiftsRange) return [] as { employee_id: string; shift_date: string }[];
+      const { data, error } = await supabase
+        .from("shifts")
+        .select("employee_id, shift_date")
+        .gte("shift_date", shiftsRange.min)
+        .lte("shift_date", shiftsRange.max);
+      if (error) throw error;
+      return data as { employee_id: string; shift_date: string }[];
+    },
+    enabled: isAdmin && !!shiftsRange,
+  });
+
+  const shiftDays = useMemo(() => {
+    const s = new Set<string>();
+    for (const sh of shiftsForVisibleAbsencesQuery.data ?? []) {
+      s.add(`${sh.employee_id}|${sh.shift_date}`);
+    }
+    return s;
+  }, [shiftsForVisibleAbsencesQuery.data]);
 
   return (
     <>
@@ -280,6 +299,7 @@ export function AbsencesPage() {
             </label>
           </div>
           {absencesQuery.isLoading ? <p>{t.loadingAbsences}</p> : null}
+          {coverageError ? <p className="schedule-error">{coverageError}</p> : null}
           {!absencesQuery.isLoading && filteredAbsences.length === 0 ? <p>{t.noAbsences}</p> : null}
           <table className="table">
             <thead>
@@ -302,12 +322,13 @@ export function AbsencesPage() {
                     <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                       {isAdmin && (() => {
                         const days: string[] = [];
-                        const s = new Date(row.start_date + "T00:00:00Z");
-                        const e = new Date(row.end_date + "T00:00:00Z");
-                        for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
-                          const day = d.toISOString().slice(0, 10);
-                          const req = openRequestMap.get(`${row.id}|${day}`);
-                          if (req || shiftDays.has(`${row.employee_id}|${day}`)) {
+                        const s = new Date(row.start_date + "T12:00:00");
+                        const e = new Date(row.end_date + "T12:00:00");
+                        for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+                          const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                          const hasShift = shiftDays.has(`${row.employee_id}|${day}`);
+                          const hasRequest = openRequestMap.has(`${row.id}|${day}`);
+                          if (hasShift || hasRequest) {
                             days.push(day);
                           }
                         }
@@ -316,7 +337,17 @@ export function AbsencesPage() {
                           if (req?.status === "accepted") {
                             return (
                               <span key={day} style={{ display: "inline-flex", alignItems: "center", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.8rem", fontWeight: 500, background: "#e6f2ec", color: "#2d7a4f", border: "1px solid #2d7a4f" }}>
-                                {t.substituteFound}{req.substitute ? `: ${req.substitute} (${day.slice(5)})` : ` (${day.slice(5)})`}
+                                {cov.substituteFound}{req.substitute ? `: ${req.substitute} (${day.slice(5)})` : ` (${day.slice(5)})`}
+                              </span>
+                            );
+                          }
+                          if (req?.status === "pending" || req?.status === "proposed") {
+                            return (
+                              <span
+                                key={day}
+                                style={{ display: "inline-flex", alignItems: "center", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.8rem", fontWeight: 500, background: "#fff7e8", color: "#9a6700", border: "1px solid #e6c075" }}
+                              >
+                                {(cov as unknown as Record<string, string>)[`status_${req.status}`] ?? req.status} ({day.slice(5)})
                               </span>
                             );
                           }
@@ -340,9 +371,12 @@ export function AbsencesPage() {
                               disabled={previewLoading}
                               onClick={async () => {
                                 setPreviewLoading(true);
+                                setCoverageError(null);
                                 try {
                                   const candidates = await previewCandidates(row.id, day);
                                   setPreviewModal({ absence_id: row.id, shift_date: day, candidates });
+                                } catch (e) {
+                                  setCoverageError(formatCoverageError(e));
                                 } finally {
                                   setPreviewLoading(false);
                                 }
@@ -368,10 +402,11 @@ export function AbsencesPage() {
         shiftDate={previewModal.shift_date}
         candidates={previewModal.candidates}
         isPending={initiateMutation.isPending}
-        confirmLabel={t.confirmInitiate}
+        confirmLabel={cov.confirmInitiate}
         cancelLabel={c.cancel ?? "Annulla"}
-        subtitleText={t.previewSubtitle}
-        noCandidatesText={t.noCandidates}
+        subtitleText={cov.previewSubtitle}
+        noCandidatesText={cov.noCandidates}
+        actionHelpText={cov.assignVsConfirmHelp}
         onClose={() => setPreviewModal(null)}
         onConfirm={() =>
           initiateMutation.mutate(
@@ -380,10 +415,16 @@ export function AbsencesPage() {
           )
         }
         onAssign={async (employee_id) => {
-          const res = await initiateRequest(previewModal.absence_id, previewModal.shift_date);
-          await manualAssign(res.request_id, employee_id);
-          queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
-          queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
+          setCoverageError(null);
+          try {
+            const res = await initiateRequest(previewModal.absence_id, previewModal.shift_date, { manual: true });
+            await manualAssign(res.request_id, employee_id);
+            queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+            queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
+          } catch (e) {
+            setCoverageError(formatCoverageError(e));
+            throw e;
+          }
         }}
       />
     )}
