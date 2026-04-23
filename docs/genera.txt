@@ -1,0 +1,5 @@
+cd /Users/gianmichele/Development/Personal/pharma-plan-pro/docs
+pandoc manuale-utente.md -o manuale-utente.pdf -V geometry:margin=2cm
+
+
+pandoc benutzerhandbuch-de.md -o benutzerhandbuch-de.pdf -V geometry:margin=2cm

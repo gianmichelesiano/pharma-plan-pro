@@ -1275,3 +1275,185 @@ thead .piano-th-fixed { z-index: 3; }
   color: #496053;
   line-height: 1.45;
 }
+
+.planning-print-page {
+  min-height: 100vh;
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.planning-print-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.planning-print-toolbar h1,
+.planning-print-notes h2 {
+  margin: 0;
+}
+
+.planning-print-toolbar p,
+.planning-print-header p {
+  margin: 0.25rem 0 0;
+  color: #4f665c;
+}
+
+.planning-print-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.planning-print-block,
+.planning-print-notes {
+  padding: 0.45rem 0.55rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(23, 63, 47, 0.1);
+}
+
+.planning-print-block-title {
+  margin-bottom: 0.35rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #587062;
+}
+
+.planning-print-table,
+.planning-print-notes-table {
+  table-layout: fixed;
+}
+
+.planning-print-table th,
+.planning-print-table td,
+.planning-print-notes-table th,
+.planning-print-notes-table td {
+  font-size: 0.5rem;
+  padding: 0.08rem 0.08rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.planning-print-table .date-cell {
+  min-width: 76px;
+  width: 76px;
+  font-size: 0.46rem;
+}
+
+.planning-print-table .notes-cell {
+  min-width: 88px;
+  width: 88px;
+}
+
+.planning-print-table .totals-cell {
+  min-width: 26px;
+  width: 26px;
+  text-align: center;
+}
+
+.planning-print-table th:not(.date-cell):not(.notes-cell):not(.totals-cell),
+.planning-print-table td:not(.date-cell):not(.notes-cell):not(.totals-cell) {
+  min-width: 18px;
+  width: 18px;
+  text-align: center;
+}
+
+.print-notes-cell {
+  text-align: left !important;
+  vertical-align: top !important;
+  white-space: normal;
+  font-size: 0.46rem;
+  line-height: 1;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.planning-print-notes-table th:first-child,
+.planning-print-notes-table td:first-child {
+  width: 190px;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 6mm;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .planning-print-page {
+    padding: 0;
+    gap: 0.25rem;
+  }
+
+  .planning-print-block,
+  .planning-print-notes {
+    background: #fff;
+    box-shadow: none;
+    border: 1px solid #d7dfd7;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .planning-print-sheet {
+    transform: scale(0.74);
+    transform-origin: top left;
+    width: calc(100% / 0.74);
+  }
+
+  .planning-print-table {
+    margin: 0;
+  }
+
+  .planning-print-table th,
+  .planning-print-table td,
+  .planning-print-notes-table th,
+  .planning-print-notes-table td {
+    font-size: 0.36rem;
+    color: #000;
+    padding: 0.03rem 0.03rem;
+    line-height: 0.95;
+  }
+
+  .planning-print-table .notes-cell {
+    width: 64px;
+    min-width: 64px;
+  }
+
+  .planning-print-table .date-cell {
+    width: 58px;
+    min-width: 58px;
+    font-size: 0.34rem;
+  }
+
+  .planning-print-table .totals-cell {
+    width: 20px;
+    min-width: 20px;
+  }
+
+  .planning-print-table th:not(.date-cell):not(.notes-cell):not(.totals-cell),
+  .planning-print-table td:not(.date-cell):not(.notes-cell):not(.totals-cell) {
+    width: 14px;
+    min-width: 14px;
+  }
+
+  .print-notes-cell {
+    font-size: 0.33rem;
+    line-height: 0.9;
+  }
+}

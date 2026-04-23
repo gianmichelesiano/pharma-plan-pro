@@ -18,6 +18,7 @@ import { AdminUsersPage } from "../pages/AdminUsersPage";
 import { PendingApprovalPage } from "../pages/PendingApprovalPage";
 import { CoverageRequestsPage } from "../pages/CoverageRequestsPage";
 import { CoverageRespondPage } from "../pages/CoverageRespondPage";
+import { PlanningPrintPage } from "../pages/PlanningPrintPage";
 
 export const router = createBrowserRouter(
   [
@@ -25,6 +26,7 @@ export const router = createBrowserRouter(
     { path: "/register", element: <RegisterPage /> },
     { path: "/pending", element: <PendingApprovalPage /> },
     { path: "/coverage/respond", element: <CoverageRespondPage /> },
+    { path: "/piano/print", element: <ProtectedRoute><PlanningPrintPage /></ProtectedRoute> },
     {
       path: "/",
       element: <ProtectedRoute><AppShell /></ProtectedRoute>,
