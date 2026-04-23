@@ -235,6 +235,19 @@ export function AbsencesPage() {
     return s;
   }, [shiftsForVisibleAbsencesQuery.data]);
 
+  async function openCandidatePreview(absence_id: string, shift_date: string) {
+    setPreviewLoading(true);
+    setCoverageError(null);
+    try {
+      const candidates = await previewCandidates(absence_id, shift_date);
+      setPreviewModal({ absence_id, shift_date, candidates });
+    } catch (e) {
+      setCoverageError(formatCoverageError(e));
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
   return (
     <>
     <section className="page">
@@ -353,14 +366,23 @@ export function AbsencesPage() {
                           }
                           if (req) {
                             return (
-                              <button
-                                key={day}
-                                type="button"
-                                className="secondary"
-                                onClick={() => navigate("/coverage-requests")}
-                              >
-                                {t.viewRequest} {day.slice(5)}
-                              </button>
+                              <span key={day} style={{ display: "inline-flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  className="primary"
+                                  disabled={previewLoading}
+                                  onClick={() => openCandidatePreview(row.id, day)}
+                                >
+                                  {t.retryRequest} {day.slice(5)}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="secondary"
+                                  onClick={() => navigate("/coverage-requests")}
+                                >
+                                  {t.viewRequest} {day.slice(5)}
+                                </button>
+                              </span>
                             );
                           }
                           return (
@@ -369,18 +391,7 @@ export function AbsencesPage() {
                               type="button"
                               className="primary"
                               disabled={previewLoading}
-                              onClick={async () => {
-                                setPreviewLoading(true);
-                                setCoverageError(null);
-                                try {
-                                  const candidates = await previewCandidates(row.id, day);
-                                  setPreviewModal({ absence_id: row.id, shift_date: day, candidates });
-                                } catch (e) {
-                                  setCoverageError(formatCoverageError(e));
-                                } finally {
-                                  setPreviewLoading(false);
-                                }
-                              }}
+                              onClick={() => openCandidatePreview(row.id, day)}
                             >
                               {t.initiate} {day.slice(5)}
                             </button>

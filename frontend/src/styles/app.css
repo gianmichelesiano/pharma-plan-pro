@@ -1383,7 +1383,7 @@ thead .piano-th-fixed { z-index: 3; }
 }
 
 @page {
-  size: A4 portrait;
+  size: A4 landscape;
   margin: 6mm;
 }
 
@@ -1411,9 +1411,9 @@ thead .piano-th-fixed { z-index: 3; }
   }
 
   .planning-print-sheet {
-    transform: scale(0.74);
+    transform: scale(0.82);
     transform-origin: top left;
-    width: calc(100% / 0.74);
+    width: calc(100% / 0.82);
   }
 
   .planning-print-table {
