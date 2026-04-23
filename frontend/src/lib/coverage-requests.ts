@@ -80,7 +80,7 @@ export async function initiateRequest(absence_id: string, shift_date: string, op
     body: { action: "initiate", absence_id, shift_date, manual: options?.manual ?? false },
   });
   if (error) throw error;
-  return data as { ok: boolean; request_id: string; already_open?: boolean; exhausted?: boolean };
+  return data as { ok: boolean; request_id?: string; already_open?: boolean; exhausted?: boolean; no_gap?: boolean };
 }
 
 export async function sendNext(request_id: string) {

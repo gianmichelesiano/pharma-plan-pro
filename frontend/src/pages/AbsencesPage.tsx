@@ -198,6 +198,15 @@ export function AbsencesPage() {
     if (msg.toLowerCase().includes("unauthorized") || msg.includes("401")) {
       return "Sessione non autorizzata per la funzione sostituzioni. Fai logout/login e riprova.";
     }
+    if (msg.includes("no coverage gap")) {
+      return "Per questa data non serve una richiesta di sostituzione.";
+    }
+    if (msg.includes("request not found")) {
+      return "Per questa data non è stata creata alcuna richiesta di sostituzione.";
+    }
+    if (msg.trim()) {
+      return `Errore richiesta sostituto: ${msg}`;
+    }
     return "Errore durante la richiesta sostituto. Riprova.";
   }
 
@@ -429,6 +438,9 @@ export function AbsencesPage() {
           setCoverageError(null);
           try {
             const res = await initiateRequest(previewModal.absence_id, previewModal.shift_date, { manual: true });
+            if (res.no_gap || !res.request_id) {
+              throw new Error("no coverage gap");
+            }
             await manualAssign(res.request_id, employee_id);
             queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
             queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });

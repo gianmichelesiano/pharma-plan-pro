@@ -534,6 +534,16 @@ async function handleManualAssign(
     return json({ error: "request not open" }, 409);
   }
 
+  const { data: existingShift } = await db
+    .from("shifts")
+    .select("id")
+    .eq("employee_id", employee_id)
+    .eq("shift_date", request.shift_date)
+    .maybeSingle();
+  if (existingShift) {
+    return json({ error: "selected employee already has a shift on this date" }, 409);
+  }
+
   // Cancel any still-open proposals, then activate only the selected one.
   await db.from("coverage_proposals")
     .update({ status: "rejected" })
@@ -574,12 +584,17 @@ async function handleManualAssign(
   if (!selectedProposal) return json({ error: "proposal not found" }, 500);
 
   const expiresAt = new Date(Date.now() + (request.timeout_hours ?? 24) * 60 * 60 * 1000).toISOString();
-  await db
+  const { error: proposalErr } = await db
     .from("coverage_proposals")
-    .update({ status: "sent", sent_at: new Date().toISOString(), expires_at: expiresAt })
+    .update({ status: "sent", sent_at: new Date().toISOString(), responded_at: null, expires_at: expiresAt })
     .eq("id", selectedProposal.id);
+  if (proposalErr) return json({ error: proposalErr.message }, 500);
 
-  await db.from("coverage_requests").update({ status: "proposed" }).eq("id", request_id);
+  const { error: reqErr } = await db
+    .from("coverage_requests")
+    .update({ status: "proposed" })
+    .eq("id", request_id);
+  if (reqErr) return json({ error: reqErr.message }, 500);
 
   const [empRes, absenceRes] = await Promise.all([
     db.from("employees").select("first_name, last_name, email").eq("id", employee_id).single(),
@@ -590,43 +605,50 @@ async function handleManualAssign(
   ]);
 
   const emp = empRes.data;
-  if (emp?.email) {
-    const absence = absenceRes.data;
-    const absentName = absence?.employee
-      ? `${(absence.employee as { first_name: string; last_name: string }).first_name} ${(absence.employee as { first_name: string; last_name: string }).last_name}`
-      : "—";
-    const absenceReason = ABSENCE_TYPE_IT[absence?.type ?? ""] ?? (absence?.type ?? "—");
-    const weekday = WEEKDAYS_IT[weekdayMon0(request.shift_date)];
-    const dateFormatted = formatDateIT(request.shift_date);
+  if (!emp?.email) {
+    await db
+      .from("coverage_proposals")
+      .update({ status: "pending", sent_at: null, expires_at: null })
+      .eq("id", selectedProposal.id);
+    await db.from("coverage_requests").update({ status: "pending" }).eq("id", request_id);
+    return json({ error: "selected employee has no email" }, 400);
+  }
 
-    const acceptUrl = `${appUrl}/coverage/respond?token=${selectedProposal.token}&response=accept`;
-    const rejectUrl = `${appUrl}/coverage/respond?token=${selectedProposal.token}&response=reject`;
-    const html = renderCoverageEmail({
-      firstName: emp.first_name,
-      absentName,
-      absenceReason,
-      weekday,
-      dateFormatted,
-      acceptUrl,
-      rejectUrl,
-      expiresAt,
+  const absence = absenceRes.data;
+  const absentName = absence?.employee
+    ? `${(absence.employee as { first_name: string; last_name: string }).first_name} ${(absence.employee as { first_name: string; last_name: string }).last_name}`
+    : "—";
+  const absenceReason = ABSENCE_TYPE_IT[absence?.type ?? ""] ?? (absence?.type ?? "—");
+  const weekday = WEEKDAYS_IT[weekdayMon0(request.shift_date)];
+  const dateFormatted = formatDateIT(request.shift_date);
+
+  const acceptUrl = `${appUrl}/coverage/respond?token=${selectedProposal.token}&response=accept`;
+  const rejectUrl = `${appUrl}/coverage/respond?token=${selectedProposal.token}&response=reject`;
+  const html = renderCoverageEmail({
+    firstName: emp.first_name,
+    absentName,
+    absenceReason,
+    weekday,
+    dateFormatted,
+    acceptUrl,
+    rejectUrl,
+    expiresAt,
+  });
+
+  try {
+    await sendEmailOrThrow(db, {
+      to: emp.email,
+      subject: `Sostituzione turno — ${weekday} ${dateFormatted} (${absentName})`,
+      html,
     });
-
-    try {
-      await sendEmailOrThrow(db, {
-        to: emp.email,
-        subject: `Sostituzione turno — ${weekday} ${dateFormatted} (${absentName})`,
-        html,
-      });
-    } catch (err) {
-      await db
-        .from("coverage_proposals")
-        .update({ status: "pending", sent_at: null, expires_at: null })
-        .eq("id", selectedProposal.id);
-      await db.from("coverage_requests").update({ status: "pending" }).eq("id", request_id);
-      const msg = err instanceof Error ? err.message : String(err);
-      return json({ error: `email send failed: ${msg}` }, 500);
-    }
+  } catch (err) {
+    await db
+      .from("coverage_proposals")
+      .update({ status: "pending", sent_at: null, expires_at: null })
+      .eq("id", selectedProposal.id);
+    await db.from("coverage_requests").update({ status: "pending" }).eq("id", request_id);
+    const msg = err instanceof Error ? err.message : String(err);
+    return json({ error: `email send failed: ${msg}` }, 500);
   }
 
   return json({ ok: true, status: "proposed" });

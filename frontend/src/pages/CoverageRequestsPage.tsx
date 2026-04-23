@@ -211,8 +211,12 @@ export function CoverageRequestsPage() {
         cancelLabel="Chiudi"
         subtitleText="Seleziona un dipendente e invia la richiesta: resterà in attesa della sua approvazione."
         noCandidatesText="Nessun dipendente trovato."
-        actionHelpText="Assegna: invia richiesta al dipendente selezionato (in attesa approvazione)."
-        onAssign={(employee_id) => manualAssign(manualModal.request_id, employee_id)}
+        actionHelpText="Assegna: invia la richiesta al dipendente selezionato e attende la sua risposta."
+        onAssign={async (employee_id) => {
+          await manualAssign(manualModal.request_id, employee_id);
+          queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
+          queryClient.invalidateQueries({ queryKey: ["coverage_requests_all"] });
+        }}
         onClose={() => {
           setManualModal(null);
           queryClient.invalidateQueries({ queryKey: ["coverage_requests_open"] });
