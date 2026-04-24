@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "../components/PageHeader";
+import { CoverageBadges } from "../components/CoverageBadges";
 import { useT } from "../i18n/useT";
 import { supabase } from "../lib/supabase";
 import { useMemo } from "react";
@@ -224,11 +225,138 @@ export function DashboardPage() {
     return map;
   }, [dailyNoteQuery.data]);
   const dailyNoteToday = dailyNotesByDay.get(today) ?? "";
+  const todayShifts = useMemo(() => {
+    const items = [...(shiftsByDay.get(today) ?? [])];
+    items.sort((a, b) => {
+      const aName = `${a.employee?.first_name ?? ""} ${a.employee?.last_name ?? ""}`;
+      const bName = `${b.employee?.first_name ?? ""} ${b.employee?.last_name ?? ""}`;
+      return aName.localeCompare(bName, "it", { sensitivity: "base" });
+    });
+    return items;
+  }, [shiftsByDay, today]);
+  const dashboardLabels = t as unknown as Record<string, string>;
+
+  const renderShiftItems = (items: ShiftRow[]) =>
+    items.map((shift) => {
+      const isAbsent = absenceSet.has(`${shift.shift_date}|${shift.employee_id}`);
+      const fullName = shift.employee ? `${shift.employee.first_name} ${shift.employee.last_name}` : "?";
+      return (
+        <div
+          key={shift.id}
+          className={[
+            "calendar-person",
+            shift.employee?.role === "pharmacist" ? "pharmacist" : "operator",
+            shift.source === "substitute" ? "is-substitute" : "",
+            isAbsent ? "is-absence" : "",
+          ].filter(Boolean).join(" ")}
+          style={{ cursor: "default" }}
+        >
+          <span>{shift.employee?.display_code ?? "—"}</span>
+          {isAbsent ? (
+            <span
+              className="calendar-person-absence-badge"
+              title={coverageT.absentEmployee}
+              aria-label={coverageT.absentEmployee}
+            />
+          ) : null}
+          <div className="calendar-tooltip">
+            <strong>{fullName}</strong>
+            {isAbsent ? <span>{coverageT.absentEmployee}</span> : null}
+          </div>
+        </div>
+      );
+    });
 
   return (
     <section className="page">
       <PageHeader title={t.title} description={t.description} />
-      <div className="grid cards">
+      <div className="mobile-only dashboard-mobile-stack">
+        <article className="card dashboard-mobile-section">
+          <div className="dashboard-mobile-section-head">
+            <div>
+              <p className="eyebrow">{dashboardLabels.dayPlanTitle}</p>
+              <h3 className="mobile-card-title">{formatDayLabel(today)}</h3>
+            </div>
+            <CoverageBadges issues={issuesMap.get(today) ?? []} />
+          </div>
+          <div className="dashboard-mobile-plan-list">
+            {todayShifts.length === 0 ? (
+              <p className="dashboard-notes-empty">—</p>
+            ) : (
+              renderShiftItems(todayShifts)
+            )}
+          </div>
+        </article>
+
+        <article className="card dashboard-mobile-section">
+          <div className="dashboard-mobile-section-head">
+            <div>
+              <p className="eyebrow">{dashboardLabels.weekTitle}</p>
+              <h3 className="mobile-card-title">{dashboardLabels.weekTitle}</h3>
+            </div>
+          </div>
+          <div className="dashboard-mobile-week-list">
+            {days.map((day, i) => {
+              const dayShifts = shiftsByDay.get(day) ?? [];
+              return (
+                <div
+                  key={day}
+                  className={hasCritical(issuesMap.get(day) ?? []) ? "mobile-card day-has-critical" : "mobile-card"}
+                >
+                  <div className="mobile-card-head">
+                    <div>
+                      <h3 className="mobile-card-title">{dayLabels[i]}</h3>
+                      <p className="mobile-card-subtitle">{formatDayLabel(day)}</p>
+                    </div>
+                    <CoverageBadges issues={issuesMap.get(day) ?? []} />
+                  </div>
+                  <div className="dashboard-mobile-plan-list">
+                    {dayShifts.length === 0 ? (
+                      <p className="dashboard-notes-empty">—</p>
+                    ) : (
+                      renderShiftItems(
+                        [...dayShifts].sort((a, b) => {
+                          const aName = `${a.employee?.first_name ?? ""} ${a.employee?.last_name ?? ""}`;
+                          const bName = `${b.employee?.first_name ?? ""} ${b.employee?.last_name ?? ""}`;
+                          return aName.localeCompare(bName, "it", { sensitivity: "base" });
+                        }),
+                      )
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </article>
+
+        <article className="card dashboard-mobile-section">
+          <div className="dashboard-mobile-section-head">
+            <div>
+              <p className="eyebrow">{dashboardLabels.notesTodayTitle}</p>
+              <h3 className="mobile-card-title">{dashboardLabels.notesTodayTitle}</h3>
+            </div>
+          </div>
+          <div className="dashboard-notes-list">
+            {plannedNotesToday.length > 0 ? (
+              <div className="calendar-note-badge dashboard-note-badge">
+                <strong>{dashboardLabels.plannedNotesLabel}</strong>
+                <span>{plannedNotesToday.join(" · ")}</span>
+              </div>
+            ) : null}
+            {dailyNoteToday ? (
+              <div className="calendar-note-badge dashboard-note-badge">
+                <strong>{dashboardLabels.dailyNotesLabel}</strong>
+                <span>{dailyNoteToday}</span>
+              </div>
+            ) : null}
+            {plannedNotesToday.length === 0 && !dailyNoteToday ? (
+              <p className="dashboard-notes-empty">{dashboardLabels.noNotesToday}</p>
+            ) : null}
+          </div>
+        </article>
+      </div>
+
+      <div className="grid cards desktop-only">
         <article className="card">
           <p className="eyebrow">{t.minCoverageTitle}</p>
           <h2 style={{ margin: "0.25rem 0", fontSize: "2.5rem", color: "#173f2f" }}>
@@ -272,7 +400,7 @@ export function DashboardPage() {
         </article>
       </div>
 
-      <div className="card" style={{ marginTop: "1.5rem" }}>
+      <div className="card desktop-only" style={{ marginTop: "1.5rem" }}>
         <h3 style={{ margin: "0 0 1rem" }}>{(t as unknown as Record<string, string>).weekTitle}</h3>
         {weekShiftsQuery.isLoading ? (
           <p>{(t as unknown as Record<string, string>).loading}</p>
@@ -310,41 +438,13 @@ export function DashboardPage() {
                     {dayShifts.length === 0 ? (
                       <span style={{ fontSize: "0.75rem", color: "#9ca3af", textAlign: "center" }}>—</span>
                     ) : (
-                      [...dayShifts]
-                        .sort((a, b) => {
+                      renderShiftItems(
+                        [...dayShifts].sort((a, b) => {
                           const aName = `${a.employee?.first_name ?? ""} ${a.employee?.last_name ?? ""}`;
                           const bName = `${b.employee?.first_name ?? ""} ${b.employee?.last_name ?? ""}`;
                           return aName.localeCompare(bName, "it", { sensitivity: "base" });
-                        })
-                        .map((s) => {
-                          const isAbsent = absenceSet.has(`${s.shift_date}|${s.employee_id}`);
-                          const fullName = s.employee ? `${s.employee.first_name} ${s.employee.last_name}` : "?";
-                          return (
-                            <div
-                              key={s.id}
-                              className={[
-                                "calendar-person",
-                                s.employee?.role === "pharmacist" ? "pharmacist" : "operator",
-                                s.source === "substitute" ? "is-substitute" : "",
-                                isAbsent ? "is-absence" : "",
-                              ].filter(Boolean).join(" ")}
-                              style={{ cursor: "default" }}
-                            >
-                              <span>{s.employee?.display_code ?? "—"}</span>
-                              {isAbsent ? (
-                                <span
-                                  className="calendar-person-absence-badge"
-                                  title={coverageT.absentEmployee}
-                                  aria-label={coverageT.absentEmployee}
-                                />
-                              ) : null}
-                              <div className="calendar-tooltip">
-                                <strong>{fullName}</strong>
-                                {isAbsent ? <span>{coverageT.absentEmployee}</span> : null}
-                              </div>
-                            </div>
-                          );
-                        })
+                        }),
+                      )
                     )}
                     {notePreview ? (
                       <div className="calendar-note-badge dashboard-note-badge" title={notePreview}>

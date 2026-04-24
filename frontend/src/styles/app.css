@@ -369,6 +369,27 @@ textarea {
   min-width: 120px;
 }
 
+.dashboard-mobile-stack {
+  display: none;
+}
+
+.dashboard-mobile-section {
+  gap: 1rem;
+}
+
+.dashboard-mobile-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.dashboard-mobile-plan-list,
+.dashboard-mobile-week-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .training-layout {
   display: grid;
   grid-template-columns: minmax(260px, 0.38fr) minmax(0, 1fr);
@@ -1384,6 +1405,11 @@ textarea {
 
   .auth-tabs {
     flex-direction: column;
+  }
+
+  .dashboard-mobile-stack {
+    display: grid;
+    gap: 1rem;
   }
 
   .table-responsive-desktop {

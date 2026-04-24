@@ -57,6 +57,7 @@ const translations = {
     dashboard: {
       title: "Dashboard",
       description: "Panoramica operativa della farmacia TPZ.",
+      dayPlanTitle: "Piano del giorno",
       minCoverageTitle: "Dipendenti attivi",
       minCoverageText: "Dipendenti con stato attivo in questo momento.",
       periodTitle: "Assenze questo mese",
@@ -387,6 +388,7 @@ const translations = {
     dashboard: {
       title: "Dashboard",
       description: "Betriebsübersicht der Apotheke TPZ.",
+      dayPlanTitle: "Tagesplan",
       minCoverageTitle: "Aktive Mitarbeiter",
       minCoverageText: "Mitarbeiter mit aktivem Status.",
       periodTitle: "Abwesenheiten diesen Monat",
@@ -710,6 +712,7 @@ const translations = {
     dashboard: {
       title: "Tableau de bord",
       description: "Vue opérationnelle de la pharmacie TPZ.",
+      dayPlanTitle: "Plan du jour",
       minCoverageTitle: "Employés actifs",
       minCoverageText: "Employés avec statut actif en ce moment.",
       periodTitle: "Absences ce mois",
@@ -1033,6 +1036,7 @@ const translations = {
     dashboard: {
       title: "Dashboard",
       description: "Operational overview of TPZ pharmacy.",
+      dayPlanTitle: "Today's plan",
       minCoverageTitle: "Active employees",
       minCoverageText: "Employees with active status right now.",
       periodTitle: "Absences this month",
