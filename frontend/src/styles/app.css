@@ -1253,16 +1253,17 @@ textarea {
     align-items: center;
     gap: 0.9rem;
     margin-bottom: 1rem;
+    min-height: 3.5rem;
   }
 
   .mobile-nav-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 3rem;
+    height: 3rem;
     padding: 0;
-    font-size: 1.2rem;
+    font-size: 1.3rem;
   }
 
   .mobile-topbar-brand {
@@ -1273,9 +1274,9 @@ textarea {
   }
 
   .mobile-topbar-brand .brand-mark {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 0.85rem;
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 0.95rem;
     flex-shrink: 0;
   }
 
@@ -1286,12 +1287,12 @@ textarea {
 
   .mobile-topbar-brand strong {
     color: #173f2f;
-    font-size: 0.96rem;
+    font-size: 1.05rem;
   }
 
   .mobile-topbar-brand span {
     color: #6b7f72;
-    font-size: 0.78rem;
+    font-size: 0.84rem;
   }
 
   .content {

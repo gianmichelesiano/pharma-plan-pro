@@ -286,6 +286,23 @@ export function DashboardPage() {
               renderShiftItems(todayShifts)
             )}
           </div>
+          <div className="dashboard-notes-list">
+            {plannedNotesToday.length > 0 ? (
+              <div className="calendar-note-badge dashboard-note-badge">
+                <strong>{dashboardLabels.plannedNotesLabel}</strong>
+                <span>{plannedNotesToday.join(" · ")}</span>
+              </div>
+            ) : null}
+            {dailyNoteToday ? (
+              <div className="calendar-note-badge dashboard-note-badge">
+                <strong>{dashboardLabels.dailyNotesLabel}</strong>
+                <span>{dailyNoteToday}</span>
+              </div>
+            ) : null}
+            {plannedNotesToday.length === 0 && !dailyNoteToday ? (
+              <p className="dashboard-notes-empty">{dashboardLabels.noNotesToday}</p>
+            ) : null}
+          </div>
         </article>
 
         <article className="card dashboard-mobile-section">
@@ -329,31 +346,6 @@ export function DashboardPage() {
           </div>
         </article>
 
-        <article className="card dashboard-mobile-section">
-          <div className="dashboard-mobile-section-head">
-            <div>
-              <p className="eyebrow">{dashboardLabels.notesTodayTitle}</p>
-              <h3 className="mobile-card-title">{dashboardLabels.notesTodayTitle}</h3>
-            </div>
-          </div>
-          <div className="dashboard-notes-list">
-            {plannedNotesToday.length > 0 ? (
-              <div className="calendar-note-badge dashboard-note-badge">
-                <strong>{dashboardLabels.plannedNotesLabel}</strong>
-                <span>{plannedNotesToday.join(" · ")}</span>
-              </div>
-            ) : null}
-            {dailyNoteToday ? (
-              <div className="calendar-note-badge dashboard-note-badge">
-                <strong>{dashboardLabels.dailyNotesLabel}</strong>
-                <span>{dailyNoteToday}</span>
-              </div>
-            ) : null}
-            {plannedNotesToday.length === 0 && !dailyNoteToday ? (
-              <p className="dashboard-notes-empty">{dashboardLabels.noNotesToday}</p>
-            ) : null}
-          </div>
-        </article>
       </div>
 
       <div className="grid cards desktop-only">
