@@ -185,34 +185,76 @@ export function EmployeesPage() {
           </div>
           {isLoading ? <p>{t.loadingEmployees}</p> : null}
           {error ? <p>{t.errorLoading}</p> : null}
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t.nameHeader}</th>
-                <th>Email</th>
-                <th>Tel</th>
-                <th>{t.roleHeader}</th>
-                <th>%</th>
-                <th>{t.bedienerHeader}</th>
-                <th>{t.statusHeader}</th>
-                <th>{t.actionsHeader}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEmployees.map((emp) => (
-                <tr key={emp.id}>
-                  <td>{emp.first_name} {emp.last_name} <small style={{ color: "#6f816f" }}>({emp.display_code})</small></td>
-                  <td>{(emp as any).email ?? "—"}</td>
-                  <td>{(emp as any).phone ?? "—"}</td>
-                  <td>{(c as unknown as Record<string, string>)[`role_${emp.role}`] ?? emp.role}</td>
-                  <td>{emp.weekly_hours_pct ?? "—"}</td>
-                  <td>{((emp as any).bediener ?? true) ? "true" : "false"}</td>
-                  <td><span className={emp.active ? "status-badge active" : "status-badge inactive"}>{emp.active ? c.active : c.inactive}</span></td>
-                  <td><div className="table-actions"><button type="button" className="secondary" onClick={() => startEdit(emp)}>{c.modify}</button></div></td>
+          <div className="table-scroll table-responsive-desktop">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t.nameHeader}</th>
+                  <th>Email</th>
+                  <th>Tel</th>
+                  <th>{t.roleHeader}</th>
+                  <th>%</th>
+                  <th>{t.bedienerHeader}</th>
+                  <th>{t.statusHeader}</th>
+                  <th>{t.actionsHeader}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredEmployees.map((emp) => (
+                  <tr key={emp.id}>
+                    <td>{emp.first_name} {emp.last_name} <small style={{ color: "#6f816f" }}>({emp.display_code})</small></td>
+                    <td>{(emp as any).email ?? "—"}</td>
+                    <td>{(emp as any).phone ?? "—"}</td>
+                    <td>{(c as unknown as Record<string, string>)[`role_${emp.role}`] ?? emp.role}</td>
+                    <td>{emp.weekly_hours_pct ?? "—"}</td>
+                    <td>{((emp as any).bediener ?? true) ? "true" : "false"}</td>
+                    <td><span className={emp.active ? "status-badge active" : "status-badge inactive"}>{emp.active ? c.active : c.inactive}</span></td>
+                    <td><div className="table-actions"><button type="button" className="secondary" onClick={() => startEdit(emp)}>{c.modify}</button></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mobile-card-list">
+            {filteredEmployees.map((emp) => (
+              <article key={emp.id} className="mobile-card">
+                <div className="mobile-card-head">
+                  <div>
+                    <h3 className="mobile-card-title">{emp.first_name} {emp.last_name}</h3>
+                    <p className="mobile-card-subtitle">{emp.display_code}</p>
+                  </div>
+                  <span className={emp.active ? "status-badge active" : "status-badge inactive"}>
+                    {emp.active ? c.active : c.inactive}
+                  </span>
+                </div>
+                <div className="mobile-card-grid">
+                  <div className="mobile-card-field">
+                    <span className="mobile-card-label">Email</span>
+                    <span className="mobile-card-value">{(emp as any).email ?? "—"}</span>
+                  </div>
+                  <div className="mobile-card-field">
+                    <span className="mobile-card-label">Tel</span>
+                    <span className="mobile-card-value">{(emp as any).phone ?? "—"}</span>
+                  </div>
+                  <div className="mobile-card-field">
+                    <span className="mobile-card-label">{t.roleHeader}</span>
+                    <span className="mobile-card-value">{(c as unknown as Record<string, string>)[`role_${emp.role}`] ?? emp.role}</span>
+                  </div>
+                  <div className="mobile-card-field">
+                    <span className="mobile-card-label">%</span>
+                    <span className="mobile-card-value">{emp.weekly_hours_pct ?? "—"}</span>
+                  </div>
+                  <div className="mobile-card-field">
+                    <span className="mobile-card-label">{t.bedienerHeader}</span>
+                    <span className="mobile-card-value">{((emp as any).bediener ?? true) ? "true" : "false"}</span>
+                  </div>
+                </div>
+                <div className="mobile-card-actions">
+                  <button type="button" className="secondary" onClick={() => startEdit(emp)}>{c.modify}</button>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </div>
     </section>

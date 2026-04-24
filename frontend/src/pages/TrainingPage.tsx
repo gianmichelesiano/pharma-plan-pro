@@ -236,9 +236,9 @@ export function TrainingPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
-        <div className="card" style={{ flex: "0 0 38%", padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "0.5rem 1rem", background: "var(--surface-2, #f4f4f4)", borderBottom: "1px solid var(--border, #e0e8e0)", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted, #6f816f)", textTransform: "uppercase" }}>
+      <div className="training-layout">
+        <div className="card training-course-list">
+          <div className="training-course-list-meta">
             {courses.length} {t.coursesCount} · {selectedYear}
           </div>
           {coursesQuery.isLoading ? <p style={{ padding: "1rem" }}>{t.loadingCourses}</p> : null}
@@ -249,15 +249,10 @@ export function TrainingPage() {
             <div
               key={course.id}
               onClick={() => setSelectedCourseId(course.id)}
-              style={{
-                padding: "0.6rem 1rem", cursor: "pointer",
-                borderLeft: course.id === selectedCourseId ? "3px solid var(--accent, #2d5a2d)" : "3px solid transparent",
-                background: course.id === selectedCourseId ? "var(--surface-selected, #e8f0e8)" : "transparent",
-                borderBottom: "1px solid var(--border-light, #f0f4f0)",
-              }}
+              className={`training-course-item${course.id === selectedCourseId ? " active" : ""}`}
             >
-              <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{course.title}</div>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted, #6f816f)", marginTop: 2 }}>
+              <div className="training-course-item-title">{course.title}</div>
+              <div className="training-course-item-meta">
                 {formatDate(course.start_date)}{course.location ? ` · ${course.location}` : ""}
               </div>
             </div>
@@ -269,7 +264,7 @@ export function TrainingPage() {
             <p>{t.noCourseSelected}</p>
           ) : (
             <>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+              <div className="training-course-header">
                 <div>
                   <div style={{ fontWeight: 700, fontSize: "1rem" }}>{selectedCourse.title}</div>
                   <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #6f816f)", marginTop: 2 }}>
@@ -280,7 +275,7 @@ export function TrainingPage() {
                     {selectedCourse.end_time ? `–${selectedCourse.end_time}` : ""}
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
+                <div className="training-course-actions">
                   <button type="button" className="secondary" onClick={openEdit}>{common.modify}</button>
                   <button type="button" className="secondary" style={{ color: "var(--danger, #c04040)" }}
                     onClick={() => { if (window.confirm(t.confirmDelete)) deleteCourseMutation.mutate(selectedCourse.id); }}>
@@ -293,21 +288,20 @@ export function TrainingPage() {
                 {t.participants}
               </div>
               {participantsQuery.isLoading ? <p>{common.loading}</p> : null}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginBottom: "0.75rem" }}>
+              <div className="training-participants">
                 {(participantsQuery.data ?? []).length === 0 && !participantsQuery.isLoading
                   ? <span style={{ fontSize: "0.85rem", color: "var(--text-muted, #6f816f)" }}>{t.noParticipants}</span>
                   : null}
                 {(participantsQuery.data ?? []).map((p) => (
-                  <span key={p.id} style={{ ...getRoleChipStyle(p.employee?.role), borderRadius: 12, padding: "3px 10px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span key={p.id} className="training-participant" style={getRoleChipStyle(p.employee?.role)}>
                     {p.employee ? `${p.employee.first_name} ${p.employee.last_name}` : "—"}
-                    <button type="button" onClick={() => removeParticipantMutation.mutate(p.employee_id)}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted, #6f816f)", padding: 0, lineHeight: 1 }}>×</button>
+                    <button type="button" onClick={() => removeParticipantMutation.mutate(p.employee_id)}>×</button>
                   </span>
                 ))}
               </div>
 
-              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.75rem" }}>
-                <select value={addEmpId} onChange={(e) => setAddEmpId(e.target.value)} style={{ flex: 1 }}>
+              <div className="training-add-row">
+                <select value={addEmpId} onChange={(e) => setAddEmpId(e.target.value)}>
                   <option value="">{t.addParticipant}…</option>
                   {availableEmployees.map((e) => (
                     <option key={e.id} value={e.id}>{e.first_name} {e.last_name}</option>
@@ -363,8 +357,8 @@ function CourseModal({ mode, form, setForm, onSave, onCancel, saving, error, t, 
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div className="card" style={{ width: "min(500px, 95vw)", maxHeight: "90vh", overflowY: "auto" }}>
+    <div className="modal-backdrop">
+      <div className="card modal-dialog modal-dialog-sm">
         <h3>{mode === "new" ? t.newCourse : t.editCourse}</h3>
         <form className="form-grid" onSubmit={onSave}>
           <label className="field">
@@ -400,7 +394,7 @@ function CourseModal({ mode, form, setForm, onSave, onCancel, saving, error, t, 
             <textarea value={form.note} onChange={field("note")} rows={2} />
           </label>
           {error ? <p style={{ color: "red", fontSize: "0.8rem" }}>{t.errorSaving}</p> : null}
-          <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+          <div className="modal-actions">
             <button type="button" className="secondary" onClick={onCancel}>{common.cancel}</button>
             <button type="submit" disabled={saving}>{saving ? t.saving : t.saveCourse}</button>
           </div>

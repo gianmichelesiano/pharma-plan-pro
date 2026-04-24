@@ -277,7 +277,8 @@ export function DashboardPage() {
         {weekShiftsQuery.isLoading ? (
           <p>{(t as unknown as Record<string, string>).loading}</p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "0.75rem", overflowX: "auto" }}>
+          <div className="table-scroll mobile-table-scroll">
+            <div className="dashboard-week-grid">
             {days.map((day, i) => {
               const isToday = day === today;
               const dayShifts = shiftsByDay.get(day) ?? [];
@@ -290,7 +291,7 @@ export function DashboardPage() {
               return (
                 <div
                   key={day}
-                  className={hasCritical(issuesMap.get(day) ?? []) ? "day-has-critical" : ""}
+                  className={hasCritical(issuesMap.get(day) ?? []) ? "day-has-critical dashboard-week-day" : "dashboard-week-day"}
                   style={{
                     background: isToday ? "#f0fdf4" : "#fafaf9",
                     border: isToday ? "2px solid #22c55e" : "1px solid #e5e7eb",
@@ -355,6 +356,7 @@ export function DashboardPage() {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
       </div>

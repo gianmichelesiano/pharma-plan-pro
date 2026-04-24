@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PageHeader } from "../components/PageHeader";
 import { useT } from "../i18n/useT";
 import { supabase } from "../lib/supabase";
 
@@ -37,48 +38,87 @@ export function AdminUsersPage() {
     load();
   }
 
-  if (loading) return <div style={{ padding: 24 }}>{t.loadingUsers}</div>;
-
   return (
-    <div style={{ padding: "1rem" }}>
-      <h1>{t.title}</h1>
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th style={th}>{t.emailHeader}</th>
-            <th style={th}>{t.adminHeader}</th>
-            <th style={th}>{t.statusHeader}</th>
-            <th style={th}>{t.actionsHeader}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.id}>
-              <td style={td}>{r.email ?? "—"}</td>
-              <td style={td}>
-                <input
-                  type="checkbox"
-                  checked={r.admin}
-                  onChange={(e) => update(r.id, { admin: e.target.checked })}
-                  style={{ accentColor: "#2d7a4f" }}
-                />
-              </td>
-              <td style={td}>{r.approved ? t.approved : t.pending}</td>
-              <td style={td}>
-                {!r.approved ? (
-                  <button onClick={() => update(r.id, { approved: true })}>{t.approve}</button>
-                ) : (
-                  <button onClick={() => update(r.id, { approved: false })}>{t.revoke}</button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <section className="page">
+      <PageHeader title={t.title} description={t.title} />
+      <div className="card">
+        {loading ? <p>{t.loadingUsers}</p> : null}
+        {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
+        {!loading ? (
+          <>
+            <div className="table-scroll table-responsive-desktop">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{t.emailHeader}</th>
+                    <th>{t.adminHeader}</th>
+                    <th>{t.statusHeader}</th>
+                    <th>{t.actionsHeader}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.email ?? "—"}</td>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={r.admin}
+                          onChange={(e) => update(r.id, { admin: e.target.checked })}
+                          style={{ accentColor: "#2d7a4f", width: "1.1rem" }}
+                        />
+                      </td>
+                      <td>
+                        <span className={r.approved ? "status-badge active" : "status-badge inactive"}>
+                          {r.approved ? t.approved : t.pending}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="table-actions">
+                          {!r.approved ? (
+                            <button onClick={() => update(r.id, { approved: true })}>{t.approve}</button>
+                          ) : (
+                            <button className="secondary" onClick={() => update(r.id, { approved: false })}>{t.revoke}</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mobile-card-list">
+              {rows.map((r) => (
+                <article key={r.id} className="mobile-card">
+                  <div className="mobile-card-head">
+                    <div>
+                      <h3 className="mobile-card-title">{r.email ?? "—"}</h3>
+                    </div>
+                    <span className={r.approved ? "status-badge active" : "status-badge inactive"}>
+                      {r.approved ? t.approved : t.pending}
+                    </span>
+                  </div>
+                  <label className="checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={r.admin}
+                      onChange={(e) => update(r.id, { admin: e.target.checked })}
+                    />
+                    <span>{t.adminHeader}</span>
+                  </label>
+                  <div className="mobile-card-actions">
+                    {!r.approved ? (
+                      <button onClick={() => update(r.id, { approved: true })}>{t.approve}</button>
+                    ) : (
+                      <button className="secondary" onClick={() => update(r.id, { approved: false })}>{t.revoke}</button>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </div>
+    </section>
   );
 }
-
-const th: React.CSSProperties = { textAlign: "left", padding: "0.5rem", borderBottom: "1px solid #444" };
-const td: React.CSSProperties = { padding: "0.5rem", borderBottom: "1px solid #333" };

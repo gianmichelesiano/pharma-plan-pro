@@ -257,6 +257,75 @@ export function AbsencesPage() {
     }
   }
 
+  function renderCoverageActions(row: Absence) {
+    const days: string[] = [];
+    const s = new Date(row.start_date + "T12:00:00");
+    const e = new Date(row.end_date + "T12:00:00");
+
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const hasShift = shiftDays.has(`${row.employee_id}|${day}`);
+      const hasRequest = openRequestMap.has(`${row.id}|${day}`);
+      if (hasShift || hasRequest) {
+        days.push(day);
+      }
+    }
+
+    return days.map((day) => {
+      const req = openRequestMap.get(`${row.id}|${day}`);
+
+      if (req?.status === "accepted") {
+        return (
+          <span key={day} className="pill-badge success">
+            {cov.substituteFound}{req.substitute ? `: ${req.substitute} (${day.slice(5)})` : ` (${day.slice(5)})`}
+          </span>
+        );
+      }
+
+      if (req?.status === "pending" || req?.status === "proposed") {
+        return (
+          <span key={day} className="pill-badge warning">
+            {(cov as unknown as Record<string, string>)[`status_${req.status}`] ?? req.status} ({day.slice(5)})
+          </span>
+        );
+      }
+
+      if (req) {
+        return (
+          <span key={day} className="stack-actions">
+            <button
+              type="button"
+              className="primary"
+              disabled={previewLoading}
+              onClick={() => openCandidatePreview(row.id, day)}
+            >
+              {t.retryRequest} {day.slice(5)}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => navigate("/coverage-requests")}
+            >
+              {t.viewRequest} {day.slice(5)}
+            </button>
+          </span>
+        );
+      }
+
+      return (
+        <button
+          key={day}
+          type="button"
+          className="primary"
+          disabled={previewLoading}
+          onClick={() => openCandidatePreview(row.id, day)}
+        >
+          {t.initiate} {day.slice(5)}
+        </button>
+      );
+    });
+  }
+
   return (
     <>
     <section className="page">
@@ -323,97 +392,61 @@ export function AbsencesPage() {
           {absencesQuery.isLoading ? <p>{t.loadingAbsences}</p> : null}
           {coverageError ? <p className="schedule-error">{coverageError}</p> : null}
           {!absencesQuery.isLoading && filteredAbsences.length === 0 ? <p>{t.noAbsences}</p> : null}
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t.employeeHeader}</th>
-                <th>{t.periodHeader}</th>
-                <th>{t.reasonHeader}</th>
-                <th>{t.statusHeader}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAbsences.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.employee ? `${row.employee.first_name} ${row.employee.last_name}` : "—"}</td>
-                  <td>{formatDateCompact(row.start_date)} → {formatDateCompact(row.end_date)}</td>
-                  <td>{(c as unknown as Record<string, string>)[`absence_type_${row.type}`] ?? row.type}</td>
-                  <td>{(c as unknown as Record<string, string>)[`absence_status_${row.status}`] ?? row.status}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                      {isAdmin && (() => {
-                        const days: string[] = [];
-                        const s = new Date(row.start_date + "T12:00:00");
-                        const e = new Date(row.end_date + "T12:00:00");
-                        for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-                          const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-                          const hasShift = shiftDays.has(`${row.employee_id}|${day}`);
-                          const hasRequest = openRequestMap.has(`${row.id}|${day}`);
-                          if (hasShift || hasRequest) {
-                            days.push(day);
-                          }
-                        }
-                        return days.map((day) => {
-                          const req = openRequestMap.get(`${row.id}|${day}`);
-                          if (req?.status === "accepted") {
-                            return (
-                              <span key={day} style={{ display: "inline-flex", alignItems: "center", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.8rem", fontWeight: 500, background: "#e6f2ec", color: "#2d7a4f", border: "1px solid #2d7a4f" }}>
-                                {cov.substituteFound}{req.substitute ? `: ${req.substitute} (${day.slice(5)})` : ` (${day.slice(5)})`}
-                              </span>
-                            );
-                          }
-                          if (req?.status === "pending" || req?.status === "proposed") {
-                            return (
-                              <span
-                                key={day}
-                                style={{ display: "inline-flex", alignItems: "center", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.8rem", fontWeight: 500, background: "#fff7e8", color: "#9a6700", border: "1px solid #e6c075" }}
-                              >
-                                {(cov as unknown as Record<string, string>)[`status_${req.status}`] ?? req.status} ({day.slice(5)})
-                              </span>
-                            );
-                          }
-                          if (req) {
-                            return (
-                              <span key={day} style={{ display: "inline-flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                                <button
-                                  type="button"
-                                  className="primary"
-                                  disabled={previewLoading}
-                                  onClick={() => openCandidatePreview(row.id, day)}
-                                >
-                                  {t.retryRequest} {day.slice(5)}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="secondary"
-                                  onClick={() => navigate("/coverage-requests")}
-                                >
-                                  {t.viewRequest} {day.slice(5)}
-                                </button>
-                              </span>
-                            );
-                          }
-                          return (
-                            <button
-                              key={day}
-                              type="button"
-                              className="primary"
-                              disabled={previewLoading}
-                              onClick={() => openCandidatePreview(row.id, day)}
-                            >
-                              {t.initiate} {day.slice(5)}
-                            </button>
-                          );
-                        });
-                      })()}
-                      <button type="button" className="secondary" onClick={async () => { const ok = await confirm({ title: "Elimina assenza", message: "Sei sicuro? Verranno rimossi anche eventuali sostituti associati.", confirmLabel: "Elimina" }); if (ok) deleteMutation.mutate(row.id); }}>{c.delete}</button>
-                    </div>
-                  </td>
+          <div className="table-scroll table-responsive-desktop">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t.employeeHeader}</th>
+                  <th>{t.periodHeader}</th>
+                  <th>{t.reasonHeader}</th>
+                  <th>{t.statusHeader}</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredAbsences.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.employee ? `${row.employee.first_name} ${row.employee.last_name}` : "—"}</td>
+                    <td>{formatDateCompact(row.start_date)} → {formatDateCompact(row.end_date)}</td>
+                    <td>{(c as unknown as Record<string, string>)[`absence_type_${row.type}`] ?? row.type}</td>
+                    <td>{(c as unknown as Record<string, string>)[`absence_status_${row.status}`] ?? row.status}</td>
+                    <td>
+                      <div className="table-actions">
+                        {isAdmin ? renderCoverageActions(row) : null}
+                        <button type="button" className="secondary" onClick={async () => { const ok = await confirm({ title: "Elimina assenza", message: "Sei sicuro? Verranno rimossi anche eventuali sostituti associati.", confirmLabel: "Elimina" }); if (ok) deleteMutation.mutate(row.id); }}>{c.delete}</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mobile-card-list">
+            {filteredAbsences.map((row) => (
+              <article key={row.id} className="mobile-card">
+                <div className="mobile-card-head">
+                  <div>
+                    <h3 className="mobile-card-title">{row.employee ? `${row.employee.first_name} ${row.employee.last_name}` : "—"}</h3>
+                    <p className="mobile-card-subtitle">{formatDateCompact(row.start_date)} → {formatDateCompact(row.end_date)}</p>
+                  </div>
+                </div>
+                <div className="mobile-card-grid">
+                  <div className="mobile-card-field">
+                    <span className="mobile-card-label">{t.reasonHeader}</span>
+                    <span className="mobile-card-value">{(c as unknown as Record<string, string>)[`absence_type_${row.type}`] ?? row.type}</span>
+                  </div>
+                  <div className="mobile-card-field">
+                    <span className="mobile-card-label">{t.statusHeader}</span>
+                    <span className="mobile-card-value">{(c as unknown as Record<string, string>)[`absence_status_${row.status}`] ?? row.status}</span>
+                  </div>
+                </div>
+                <div className="mobile-card-actions">
+                  {isAdmin ? renderCoverageActions(row) : null}
+                  <button type="button" className="secondary" onClick={async () => { const ok = await confirm({ title: "Elimina assenza", message: "Sei sicuro? Verranno rimossi anche eventuali sostituti associati.", confirmLabel: "Elimina" }); if (ok) deleteMutation.mutate(row.id); }}>{c.delete}</button>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </div>
     </section>

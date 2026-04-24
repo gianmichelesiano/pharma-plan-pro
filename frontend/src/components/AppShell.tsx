@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LANG_FLAGS, LANG_NAMES, nextLang } from "../i18n/translations";
@@ -23,18 +24,41 @@ const navRoutes: NavItem[] = [
 export function AppShell() {
   const { lang, setLang } = useLanguage();
   const { session, signOut, isAdmin } = useAuth();
+  const location = useLocation();
   const nav = useT("nav");
   const visible = navRoutes.filter((r) => !r.adminOnly || isAdmin);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="layout">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark">PP</span>
-          <div>
-            <h1>Pharma Plan</h1>
-            <p>TPZ Muhen</p>
+      <button
+        type="button"
+        className={`mobile-nav-backdrop${mobileNavOpen ? " visible" : ""}`}
+        aria-hidden={!mobileNavOpen}
+        tabIndex={mobileNavOpen ? 0 : -1}
+        onClick={() => setMobileNavOpen(false)}
+      />
+      <aside className={`sidebar${mobileNavOpen ? " open" : ""}`}>
+        <div className="sidebar-head">
+          <div className="brand">
+            <span className="brand-mark">PP</span>
+            <div>
+              <h1>Pharma Plan</h1>
+              <p>TPZ Muhen</p>
+            </div>
           </div>
+          <button
+            type="button"
+            className="sidebar-close"
+            aria-label="Close navigation"
+            onClick={() => setMobileNavOpen(false)}
+          >
+            ×
+          </button>
         </div>
         <nav className="nav">
           {visible.map((item) => (
@@ -42,6 +66,7 @@ export function AppShell() {
               key={item.to}
               to={item.to}
               end={item.to === "/"}
+              onClick={() => setMobileNavOpen(false)}
               className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
             >
               {nav[item.key] ?? item.key}
@@ -69,6 +94,23 @@ export function AppShell() {
         </div>
       </aside>
       <main className="content">
+        <div className="mobile-topbar">
+          <button
+            type="button"
+            className="mobile-nav-toggle"
+            aria-label="Open navigation"
+            onClick={() => setMobileNavOpen(true)}
+          >
+            ☰
+          </button>
+          <div className="mobile-topbar-brand">
+            <span className="brand-mark">PP</span>
+            <div>
+              <strong>Pharma Plan</strong>
+              <span>TPZ Muhen</span>
+            </div>
+          </div>
+        </div>
         <Outlet />
       </main>
     </div>

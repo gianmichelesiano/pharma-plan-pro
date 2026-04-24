@@ -56,9 +56,14 @@ function expiresLabel(request: CoverageRequest): string {
   return `${h}h ${m}m`;
 }
 
+function statusLabel(translations: Record<string, string>, status: string) {
+  return translations[`status_${status}`] ?? status;
+}
+
 export function CoverageRequestsPage() {
   const t = useT("coverage");
   const c = useT("common");
+  const labels = t as unknown as Record<string, string>;
   const queryClient = useQueryClient();
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
@@ -121,84 +126,147 @@ export function CoverageRequestsPage() {
         {!requestsQuery.isLoading && requests.length === 0 ? (
           <p>{t.noRequests}</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t.shiftDate}</th>
-                <th>{t.absentEmployee}</th>
-                <th>{t.status}</th>
-                <th>{t.currentCandidate}</th>
-                <th>{t.expires}</th>
-                <th>{t.actions}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            <div className="table-scroll table-responsive-desktop">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{t.shiftDate}</th>
+                    <th>{t.absentEmployee}</th>
+                    <th>{t.status}</th>
+                    <th>{t.currentCandidate}</th>
+                    <th>{t.expires}</th>
+                    <th>{t.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requests.map((r) => (
+                    <tr key={r.id}>
+                      <td>{formatDate(r.shift_date)}</td>
+                      <td>
+                        {r.absence?.employee
+                          ? `${r.absence.employee.first_name} ${r.absence.employee.last_name}`
+                          : "—"}
+                      </td>
+                      <td>
+                        <span
+                          className="status-chip"
+                          style={{ background: STATUS_COLORS[r.status] ?? "#94a3b8" }}
+                        >
+                          {statusLabel(labels, r.status)}
+                        </span>
+                      </td>
+                      <td>{currentCandidate(r)}</td>
+                      <td>{expiresLabel(r)}</td>
+                      <td>
+                        <div className="table-actions">
+                          {r.status === "proposed" && isExpired(r) ? (
+                            <button
+                              className="primary"
+                              disabled={sendNextMutation.isPending}
+                              onClick={() => sendNextMutation.mutate(r.id)}
+                            >
+                              {t.resend}
+                            </button>
+                          ) : null}
+                          {r.status === "exhausted" ? (
+                            <button
+                              className="secondary"
+                              disabled={manualLoading === r.id}
+                              onClick={async () => {
+                                setManualLoading(r.id);
+                                try {
+                                  const candidates = await previewCandidates(r.absence_id, r.shift_date);
+                                  setManualModal({ shift_date: r.shift_date, candidates, request_id: r.id });
+                                } finally {
+                                  setManualLoading(null);
+                                }
+                              }}
+                            >
+                              {t.manualFix}
+                            </button>
+                          ) : null}
+                          {r.status === "pending" || r.status === "proposed" ? (
+                            <button
+                              className="secondary"
+                              disabled={cancelMutation.isPending}
+                              onClick={async () => { const ok = await confirm({ title: "Annulla richiesta", message: "Sei sicuro di voler annullare questa richiesta di copertura?", confirmLabel: "Annulla richiesta" }); if (ok) cancelMutation.mutate(r.id); }}
+                            >
+                              {t.cancel}
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mobile-card-list">
               {requests.map((r) => (
-                <tr key={r.id}>
-                  <td>{formatDate(r.shift_date)}</td>
-                  <td>
-                    {r.absence?.employee
-                      ? `${r.absence.employee.first_name} ${r.absence.employee.last_name}`
-                      : "—"}
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        background: STATUS_COLORS[r.status] ?? "#94a3b8",
-                        color: "#fff",
-                        borderRadius: "4px",
-                        padding: "2px 8px",
-                        fontSize: "0.8rem",
-                      }}
-                    >
-                      {(t as unknown as Record<string, string>)[`status_${r.status}`] ?? r.status}
-                    </span>
-                  </td>
-                  <td>{currentCandidate(r)}</td>
-                  <td>{expiresLabel(r)}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      {r.status === "proposed" && isExpired(r) && (
-                        <button
-                          className="primary"
-                          disabled={sendNextMutation.isPending}
-                          onClick={() => sendNextMutation.mutate(r.id)}
-                        >
-                          {t.resend}
-                        </button>
-                      )}
-                      {r.status === "exhausted" && (
-                        <button
-                          className="secondary"
-                          disabled={manualLoading === r.id}
-                          onClick={async () => {
-                            setManualLoading(r.id);
-                            try {
-                              const candidates = await previewCandidates(r.absence_id, r.shift_date);
-                              setManualModal({ shift_date: r.shift_date, candidates, request_id: r.id });
-                            } finally {
-                              setManualLoading(null);
-                            }
-                          }}
-                        >
-                          {t.manualFix}
-                        </button>
-                      )}
-                      {(r.status === "pending" || r.status === "proposed") && (
-                        <button
-                          className="secondary"
-                          disabled={cancelMutation.isPending}
-                          onClick={async () => { const ok = await confirm({ title: "Annulla richiesta", message: "Sei sicuro di voler annullare questa richiesta di copertura?", confirmLabel: "Annulla richiesta" }); if (ok) cancelMutation.mutate(r.id); }}
-                        >
-                          {t.cancel}
-                        </button>
-                      )}
+                <article key={r.id} className="mobile-card">
+                  <div className="mobile-card-head">
+                    <div>
+                      <h3 className="mobile-card-title">{formatDate(r.shift_date)}</h3>
+                      <p className="mobile-card-subtitle">
+                        {r.absence?.employee ? `${r.absence.employee.first_name} ${r.absence.employee.last_name}` : "—"}
+                      </p>
                     </div>
-                  </td>
-                </tr>
+                    <span className="status-chip" style={{ background: STATUS_COLORS[r.status] ?? "#94a3b8" }}>
+                      {statusLabel(labels, r.status)}
+                    </span>
+                  </div>
+                  <div className="mobile-card-grid">
+                    <div className="mobile-card-field">
+                      <span className="mobile-card-label">{t.currentCandidate}</span>
+                      <span className="mobile-card-value">{currentCandidate(r)}</span>
+                    </div>
+                    <div className="mobile-card-field">
+                      <span className="mobile-card-label">{t.expires}</span>
+                      <span className="mobile-card-value">{expiresLabel(r)}</span>
+                    </div>
+                  </div>
+                  <div className="mobile-card-actions">
+                    {r.status === "proposed" && isExpired(r) ? (
+                      <button
+                        className="primary"
+                        disabled={sendNextMutation.isPending}
+                        onClick={() => sendNextMutation.mutate(r.id)}
+                      >
+                        {t.resend}
+                      </button>
+                    ) : null}
+                    {r.status === "exhausted" ? (
+                      <button
+                        className="secondary"
+                        disabled={manualLoading === r.id}
+                        onClick={async () => {
+                          setManualLoading(r.id);
+                          try {
+                            const candidates = await previewCandidates(r.absence_id, r.shift_date);
+                            setManualModal({ shift_date: r.shift_date, candidates, request_id: r.id });
+                          } finally {
+                            setManualLoading(null);
+                          }
+                        }}
+                      >
+                        {t.manualFix}
+                      </button>
+                    ) : null}
+                    {r.status === "pending" || r.status === "proposed" ? (
+                      <button
+                        className="secondary"
+                        disabled={cancelMutation.isPending}
+                        onClick={async () => { const ok = await confirm({ title: "Annulla richiesta", message: "Sei sicuro di voler annullare questa richiesta di copertura?", confirmLabel: "Annulla richiesta" }); if (ok) cancelMutation.mutate(r.id); }}
+                      >
+                        {t.cancel}
+                      </button>
+                    ) : null}
+                  </div>
+                </article>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
     </section>

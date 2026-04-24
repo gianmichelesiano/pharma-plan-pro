@@ -84,38 +84,71 @@ export function RulesPage() {
         {coverageQuery.isLoading ? <p>{t.loadingRules}</p> : null}
         {saveMutation.isSuccess ? <p>{t.savedSuccess}</p> : null}
         {saveMutation.error ? <p>{t.errorSaving}</p> : null}
-        <table className="table rules-table">
-          <thead>
-            <tr>
-              <th>{t.dayHeader}</th>
-              <th>{t.pharmacistsHeader}</th>
-              <th>{t.operatorsHeader}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {WEEKDAYS.map((wd) => (
-              <tr key={wd}>
-                <td>{c.weekdaysShort[wd]}</td>
-                <td>
+        <div className="table-scroll table-responsive-desktop">
+          <table className="table rules-table">
+            <thead>
+              <tr>
+                <th>{t.dayHeader}</th>
+                <th>{t.pharmacistsHeader}</th>
+                <th>{t.operatorsHeader}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {WEEKDAYS.map((wd) => (
+                <tr key={wd}>
+                  <td>{c.weekdaysShort[wd]}</td>
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      value={draft[wd]?.pharmacist ?? "0"}
+                      onChange={(e) => updateCell(wd, "pharmacist", e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      value={draft[wd]?.other ?? "0"}
+                      onChange={(e) => updateCell(wd, "other", e.target.value)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mobile-card-list">
+          {WEEKDAYS.map((wd) => (
+            <article key={wd} className="mobile-card">
+              <div className="mobile-card-head">
+                <div>
+                  <h3 className="mobile-card-title">{c.weekdaysShort[wd]}</h3>
+                </div>
+              </div>
+              <div className="mobile-card-grid">
+                <label className="field">
+                  <span>{t.pharmacistsHeader}</span>
                   <input
                     type="number"
                     min="0"
                     value={draft[wd]?.pharmacist ?? "0"}
                     onChange={(e) => updateCell(wd, "pharmacist", e.target.value)}
                   />
-                </td>
-                <td>
+                </label>
+                <label className="field">
+                  <span>{t.operatorsHeader}</span>
                   <input
                     type="number"
                     min="0"
                     value={draft[wd]?.other ?? "0"}
                     onChange={(e) => updateCell(wd, "other", e.target.value)}
                   />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </label>
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );

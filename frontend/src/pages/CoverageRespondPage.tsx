@@ -53,24 +53,11 @@ export function CoverageRespondPage() {
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "0.75rem",
-        minHeight: "100vh",
-        fontFamily: "system-ui, sans-serif",
-        fontSize: "1.25rem",
-        textAlign: "center",
-        padding: "2rem",
-        background: "#f7faf7",
-        color: "#16392c",
-      }}
-    >
-      <h2 style={{ margin: 0, fontSize: "1.2rem" }}>Copertura turno</h2>
-      <p style={{ margin: 0 }}>{messages[state] || "—"}</p>
+    <div className="center-page">
+      <div className="card center-card">
+        <h2 style={{ margin: "0 0 0.75rem", fontSize: "1.2rem", color: "#16392c" }}>Copertura turno</h2>
+        <p style={{ margin: 0, color: "#355445" }}>{messages[state] || "—"}</p>
+      </div>
     </div>
   );
 }

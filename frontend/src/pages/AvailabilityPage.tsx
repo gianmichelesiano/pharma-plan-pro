@@ -136,171 +136,173 @@ export function AvailabilityPage() {
 
         {upsertMutation.error ? <p className="error">{t.errorSaving}</p> : null}
 
-        <table className="table availability-table">
-          <thead>
-            <tr>
-              <th>Employee</th>
-              {WEEKDAY_LABELS.map((label) => (
-                <th key={label}>{label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {employees.map((emp) => (
-              <tr key={emp.id}>
-                <td>
-                  {emp.first_name} {emp.last_name}
-                </td>
-                {WEEKDAYS.map((weekday) => {
-                  const key = `${emp.id}-${String(weekday)}`;
-                  const isStandard = patternType === "accessory" && !!standardMap[key];
-                  const pattern = patternMap.get(key);
-                  const available = isStandard || !!pattern?.active;
-                  const noteValue = draftNotes[key] ?? pattern?.special_note ?? "";
-                  const noteOpen = !!openNotes[key];
-                  const savedNote = pattern?.special_note ?? "";
-                  const hasSavedNote = Boolean(savedNote.trim());
-                  return (
-                    <td key={weekday}>
-                      <div className="availability-cell">
-                        <div className="availability-inline-row">
-                          <label className="availability-active">
-                            <input
-                              type="checkbox"
-                              checked={available}
-                              disabled={isStandard || upsertMutation.isPending}
-                              title={isStandard ? "Già in disponibilità standard" : undefined}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                if (!checked) {
-                                  setDraftNotes((prev) => ({ ...prev, [key]: "" }));
-                                  setOpenNotes((prev) => ({ ...prev, [key]: false }));
-                                }
-                                upsertMutation.mutate({
-                                  employee_id: emp.id,
-                                  weekday,
-                                  active: checked,
-                                  special_note: checked ? (noteValue.trim() || null) : null,
-                                });
-                              }}
-                            />
-                          </label>
-                          {available && !isStandard && (
-                            <div className="availability-special availability-special-inline">
-                              {!hasSavedNote && !noteOpen && (
-                                <button
-                                  type="button"
-                                  className="secondary availability-note-btn"
-                                  disabled={upsertMutation.isPending}
-                                  onClick={() => {
-                                    setDraftNotes((prev) => ({
-                                      ...prev,
-                                      [key]: prev[key] ?? pattern?.special_note ?? "",
-                                    }));
-                                    setOpenNotes((prev) => ({ ...prev, [key]: true }));
-                                  }}
-                                >
-                                  {t.noteButton}
-                                </button>
-                              )}
-                              {!noteOpen && hasSavedNote && (
-                                <div className="availability-note-inline-actions">
+        <div className="table-scroll mobile-table-scroll">
+          <table className="table availability-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                {WEEKDAY_LABELS.map((label) => (
+                  <th key={label}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {employees.map((emp) => (
+                <tr key={emp.id}>
+                  <td>
+                    {emp.first_name} {emp.last_name}
+                  </td>
+                  {WEEKDAYS.map((weekday) => {
+                    const key = `${emp.id}-${String(weekday)}`;
+                    const isStandard = patternType === "accessory" && !!standardMap[key];
+                    const pattern = patternMap.get(key);
+                    const available = isStandard || !!pattern?.active;
+                    const noteValue = draftNotes[key] ?? pattern?.special_note ?? "";
+                    const noteOpen = !!openNotes[key];
+                    const savedNote = pattern?.special_note ?? "";
+                    const hasSavedNote = Boolean(savedNote.trim());
+                    return (
+                      <td key={weekday}>
+                        <div className="availability-cell">
+                          <div className="availability-inline-row">
+                            <label className="availability-active">
+                              <input
+                                type="checkbox"
+                                checked={available}
+                                disabled={isStandard || upsertMutation.isPending}
+                                title={isStandard ? "Già in disponibilità standard" : undefined}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  if (!checked) {
+                                    setDraftNotes((prev) => ({ ...prev, [key]: "" }));
+                                    setOpenNotes((prev) => ({ ...prev, [key]: false }));
+                                  }
+                                  upsertMutation.mutate({
+                                    employee_id: emp.id,
+                                    weekday,
+                                    active: checked,
+                                    special_note: checked ? (noteValue.trim() || null) : null,
+                                  });
+                                }}
+                              />
+                            </label>
+                            {available && !isStandard && (
+                              <div className="availability-special availability-special-inline">
+                                {!hasSavedNote && !noteOpen && (
                                   <button
                                     type="button"
-                                    className="secondary availability-note-inline-btn"
+                                    className="secondary availability-note-btn"
                                     disabled={upsertMutation.isPending}
                                     onClick={() => {
                                       setDraftNotes((prev) => ({
                                         ...prev,
-                                        [key]: savedNote,
+                                        [key]: prev[key] ?? pattern?.special_note ?? "",
                                       }));
                                       setOpenNotes((prev) => ({ ...prev, [key]: true }));
                                     }}
                                   >
-                                    {c.modify}
+                                    {t.noteButton}
                                   </button>
-                                  <button
-                                    type="button"
-                                    className="secondary availability-note-inline-btn danger"
+                                )}
+                                {!noteOpen && hasSavedNote && (
+                                  <div className="availability-note-inline-actions">
+                                    <button
+                                      type="button"
+                                      className="secondary availability-note-inline-btn"
+                                      disabled={upsertMutation.isPending}
+                                      onClick={() => {
+                                        setDraftNotes((prev) => ({
+                                          ...prev,
+                                          [key]: savedNote,
+                                        }));
+                                        setOpenNotes((prev) => ({ ...prev, [key]: true }));
+                                      }}
+                                    >
+                                      {c.modify}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="secondary availability-note-inline-btn danger"
+                                      disabled={upsertMutation.isPending}
+                                      onClick={() => {
+                                        setDraftNotes((prev) => ({ ...prev, [key]: "" }));
+                                        upsertMutation.mutate({
+                                          employee_id: emp.id,
+                                          weekday,
+                                          active: true,
+                                          special_note: null,
+                                        });
+                                      }}
+                                    >
+                                      {c.delete}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {available && !isStandard && (
+                            <div className="availability-special">
+                              {noteOpen && (
+                                <div className="availability-note-pop">
+                                  <textarea
+                                    className="availability-note-text"
+                                    rows={3}
+                                    value={noteValue}
+                                    placeholder={t.notePlaceholder}
                                     disabled={upsertMutation.isPending}
-                                    onClick={() => {
-                                      setDraftNotes((prev) => ({ ...prev, [key]: "" }));
-                                      upsertMutation.mutate({
-                                        employee_id: emp.id,
-                                        weekday,
-                                        active: true,
-                                        special_note: null,
-                                      });
-                                    }}
-                                  >
-                                    {c.delete}
-                                  </button>
+                                    onChange={(e) =>
+                                      setDraftNotes((prev) => ({
+                                        ...prev,
+                                        [key]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                  <div className="availability-note-actions">
+                                    <button
+                                      type="button"
+                                      className="primary availability-note-save"
+                                      disabled={upsertMutation.isPending}
+                                      onClick={() => {
+                                        saveNote(emp.id, weekday, noteValue);
+                                        setOpenNotes((prev) => ({ ...prev, [key]: false }));
+                                      }}
+                                    >
+                                      {c.save}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="secondary availability-note-cancel"
+                                      disabled={upsertMutation.isPending}
+                                      onClick={() => {
+                                        setDraftNotes((prev) => ({
+                                          ...prev,
+                                          [key]: pattern?.special_note ?? "",
+                                        }));
+                                        setOpenNotes((prev) => ({ ...prev, [key]: false }));
+                                      }}
+                                    >
+                                      {c.cancel}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                              {!noteOpen && hasSavedNote && (
+                                <div className="availability-note-preview-wrap">
+                                  <div className="availability-note-preview">{savedNote}</div>
                                 </div>
                               )}
                             </div>
                           )}
                         </div>
-                        {available && !isStandard && (
-                          <div className="availability-special">
-                            {noteOpen && (
-                              <div className="availability-note-pop">
-                                <textarea
-                                  className="availability-note-text"
-                                  rows={3}
-                                  value={noteValue}
-                                  placeholder={t.notePlaceholder}
-                                  disabled={upsertMutation.isPending}
-                                  onChange={(e) =>
-                                    setDraftNotes((prev) => ({
-                                      ...prev,
-                                      [key]: e.target.value,
-                                    }))
-                                  }
-                                />
-                                <div className="availability-note-actions">
-                                  <button
-                                    type="button"
-                                    className="primary availability-note-save"
-                                    disabled={upsertMutation.isPending}
-                                    onClick={() => {
-                                      saveNote(emp.id, weekday, noteValue);
-                                      setOpenNotes((prev) => ({ ...prev, [key]: false }));
-                                    }}
-                                  >
-                                    {c.save}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="secondary availability-note-cancel"
-                                    disabled={upsertMutation.isPending}
-                                    onClick={() => {
-                                      setDraftNotes((prev) => ({
-                                        ...prev,
-                                        [key]: pattern?.special_note ?? "",
-                                      }));
-                                      setOpenNotes((prev) => ({ ...prev, [key]: false }));
-                                    }}
-                                  >
-                                    {c.cancel}
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                            {!noteOpen && hasSavedNote && (
-                              <div className="availability-note-preview-wrap">
-                                <div className="availability-note-preview">{savedNote}</div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );
